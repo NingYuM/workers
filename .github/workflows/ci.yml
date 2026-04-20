@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - feature/future
+    paths-ignore:
+      - '*.md'
+      - '**/*.md'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  ci:
+    name: CI
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        # os: [ubuntu-latest, ubuntu-22.04-arm, macos-latest, windows-latest]
+        node-version: [22]
+
+    steps:
+      - name: Configure Git line endings
+        run: git config --global core.autocrlf false
+
+      - name: Checkout pptx
+        uses: actions/checkout@v6
+        with:
+          path: pptx
+
+      - name: Checkout mbtpdf
+        uses: actions/checkout@v6
+        with:
+          repository: NingYuM/mbtpdf
+          ref: fix/patch
+          path: mbtpdf
+
+      - name: Setup Nushell
+        uses: hustcer/setup-nu@v3
+        with:
+          version: '0.112.1'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 10
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+          cache-dependency-path: pptx/pnpm-lock.yaml
+
+      - name: Setup MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Setup MoonBit
+        uses: hustcer/setup-moonbit@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        shell: nu {0}
+        working-directory: pptx
+        run: |
+          moon version --all
+          moon update
+          pnpm install --frozen-lockfile
+          print '✅ Dependencies installed'
+
+      - name: Lint
+        shell: nu {0}
+        working-directory: pptx
+        run: |
+          pnpm lint
+          nu tools/check-mbt-pkg-layout.nu
+          moon -C s8fy check
+          moon -C emf-mbt check --target all
+          moon -C moon-tex check --target all
+          moon -C parser-mbt check --target all
+          moon -C image-converter check --target native
+          moon -C pdf-converter check --target native,wasm-gc
+          print '✅ Lint passed'
+
+      - name: Format check
+        shell: nu {0}
+        working-directory: pptx
+        run: |
+          pnpm fmt:check
+          moon -C s8fy fmt --check
+          moon -C emf-mbt fmt --check
+          moon -C moon-tex fmt --check
+          moon -C parser-mbt fmt --check
+          moon -C image-converter fmt --check
+          moon -C pdf-converter fmt --check
+          print '✅ Format check passed'
+
+      - name: Build
+        shell: nu {0}
+        working-directory: pptx
+        run: |
+          pnpm --filter @s8fy/emf2svg build
+          pnpm --filter @s8fy/pptx-parser build
+          pnpm --filter @s8fy/pptx-viewer build:lib
+          moon -C s8fy build --release
+          moon -C moon-tex build --target all --release
+          moon -C parser-mbt build --target all --release
+          moon -C emf-mbt build --target wasm-gc --release
+          moon -C image-converter build cmd/main --target native --release
+          moon -C pdf-converter build --target native,wasm-gc --release
+          print '✅ Build succeeded'
+
+      - name: Test
+        shell: nu {0}
+        working-directory: pptx
+        run: |
+          let pdfium_lib_dir = (pwd | path join 'native' 'pdfium' 'lib')
+          if $nu.os-info.name == 'windows' {
+            $env.Path = ($env.Path | prepend $pdfium_lib_dir)
+          } else {
+            $env.PATH = ($env.PATH | prepend $pdfium_lib_dir)
+          }
+          pnpm -r test
+          moon -C s8fy test
+          moon -C emf-mbt test --target all
+          moon -C moon-tex test --target all
+          moon -C parser-mbt test --target all
+          moon -C image-converter test --target native
+          moon -C pdf-converter test --target native,wasm-gc
+          print '✅ Tests passed'
