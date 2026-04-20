@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - feature/future
     paths-ignore:
       - '*.md'
       - '**/*.md'
@@ -20,7 +19,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        # os: [ubuntu-latest, ubuntu-22.04-arm, macos-latest, windows-latest]
         node-version: [22]
 
     steps:
@@ -30,14 +28,17 @@ jobs:
       - name: Checkout pptx
         uses: actions/checkout@v6
         with:
+          ref: main
           path: pptx
+          token: ${{ secrets.ACCESS_TOKEN }}
+          repository: ${{ secrets.SOURCE_REPO }}
 
       - name: Checkout mbtpdf
         uses: actions/checkout@v6
         with:
-          repository: NingYuM/mbtpdf
-          ref: fix/patch
           path: mbtpdf
+          ref: fix/patch
+          repository: NingYuM/mbtpdf
 
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
