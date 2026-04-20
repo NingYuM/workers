@@ -23,8 +23,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, macos-26-intel, windows-latest]
-        node-version: [22]
+        # Moon toolchain don't support macos-26-intel?
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: [22, 24]
 
     steps:
       - name: Configure Git line endings
