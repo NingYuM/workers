@@ -24,8 +24,8 @@ jobs:
       fail-fast: false
       matrix:
         # Moon toolchain don't support macos-26-intel?
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        node-version: [22, 24]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]
+        node-version: [24]
 
     steps:
       - name: Configure Git line endings
@@ -68,7 +68,7 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
 
       - name: Setup MoonBit
-        uses: hustcer/setup-moonbit@v1
+        uses: hustcer/setup-moonbit@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
