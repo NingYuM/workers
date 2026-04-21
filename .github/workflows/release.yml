@@ -1,0 +1,141 @@
+name: Release Bin
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        required: true
+        description: 'The tag to release (e.g. v0.1.0)'
+
+jobs:
+  build:
+    name: Build Bin (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x64
+            ext: tar.gz
+          - os: ubuntu-24.04-arm
+            target: linux-arm64
+            ext: tar.gz
+          - os: macos-latest
+            target: macos-arm64
+            ext: tar.gz
+          - os: windows-latest
+            target: windows-x64
+            ext: zip
+
+    steps:
+      - name: Configure Git line endings
+        run: git config --global core.autocrlf false
+
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          path: source
+          token: ${{ secrets.ACCESS_TOKEN }}
+          ref: ${{ github.event.inputs.tag }}
+          repository: ${{ secrets.SOURCE_REPO }}
+
+      - name: Checkout mbtpdf
+        uses: actions/checkout@v6
+        with:
+          path: mbtpdf
+          ref: fix/patch
+          repository: NingYuM/mbtpdf
+
+      - name: Setup Nushell
+        uses: hustcer/setup-nu@v3
+        with:
+          version: '0.112.2'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Setup MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install patchelf (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y patchelf
+
+      - name: Setup MoonBit
+        uses: hustcer/setup-moonbit@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Bin
+        shell: nu {0}
+        working-directory: source
+        run: |
+          moon update
+          moon -C s8fy build --release
+          print '✅ s8fy build succeeded'
+
+      - name: Prepare artifact
+        shell: nu {0}
+        working-directory: source
+        run: |
+          let ext = '${{ matrix.ext }}'
+          let target = '${{ matrix.target }}'
+          let archive = $'s8fy-($target).($ext)'
+          let bin_name = if $nu.os-info.name == 'windows' { 's8fy.exe' } else { 's8fy' }
+          let pdfium_lib_dir = (pwd | path join 'native' 'pdfium' 'lib')
+          mkdir pkg
+          cp s8fy/_build/native/release/build/cmd/main/main.exe $'pkg/($bin_name)'
+          cp s8fy/LICENSE pkg/LICENSE
+          cp -r native/pdfium/licenses pkg/licenses-pdfium
+          # Bundle pdfium and fix rpath so binary is portable
+          match $nu.os-info.name {
+            'macos' => {
+              cp $'($pdfium_lib_dir)/libpdfium.dylib' pkg/
+              ^install_name_tool -add_rpath '@executable_path' $'pkg/($bin_name)'
+            }
+            'linux' => {
+              cp $'($pdfium_lib_dir)/libpdfium.so' pkg/
+              ^patchelf --set-rpath '$ORIGIN' $'pkg/($bin_name)'
+            }
+            'windows' => {
+              cp $'($pdfium_lib_dir)/pdfium.dll' pkg/
+            }
+          }
+          if $ext == 'zip' {
+            cd pkg; ^7z a $'../($archive)' *
+          } else {
+            tar -czf $archive -C pkg .
+          }
+          print $'✅ Archive ready: ($archive)'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: s8fy-${{ matrix.target }}.${{ matrix.ext }}
+          path: source/s8fy-${{ matrix.target }}.${{ matrix.ext }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          token: ${{ secrets.ACCESS_TOKEN }}
+          repository: ${{ secrets.SOURCE_REPO }}
+          tag_name: ${{ github.event.inputs.tag }}
+          generate_release_notes: true
+          files: artifacts/**/*
