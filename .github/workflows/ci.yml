@@ -114,7 +114,13 @@ jobs:
         run: |
           pnpm --filter @s8fy/emf2svg build
           pnpm --filter @s8fy/pptx-parser build
+          pnpm --filter @s8fy/pptx-core build
+          pnpm --filter @s8fy/pptx-renderer build
           pnpm --filter @s8fy/pptx-viewer build:lib
+          pnpm --filter @s8fy/pptx-viewer-react build
+          pnpm --filter @s8fy/pptx-viewer-solid build
+          pnpm --filter @s8fy/pptx-viewer-svelte build
+          pnpm --filter @s8fy/pptx-viewer-vue build
           moon -C s8fy build --release
           moon -C moon-tex build --target all --release
           moon -C parser-mbt build --target all --release
