@@ -46,6 +46,13 @@ jobs:
           ref: fix/patch
           repository: NingYuM/mbtpdf
 
+      - name: Checkout Crescent
+        uses: actions/checkout@v6
+        with:
+          ref: feature/patch
+          path: refs/crescent
+          repository: hustcer/crescent
+
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
@@ -87,7 +94,7 @@ jobs:
         run: |
           pnpm lint
           nu tools/check-mbt-pkg-layout.nu
-          moon -C s8fy check
+          moon -C s8fy check --target native
           moon -C emf-mbt check --target all
           moon -C moon-tex check --target all
           moon -C parser-mbt check --target all
@@ -121,7 +128,7 @@ jobs:
           pnpm --filter @s8fy/pptx-viewer-solid build
           pnpm --filter @s8fy/pptx-viewer-svelte build
           pnpm --filter @s8fy/pptx-viewer-vue build
-          moon -C s8fy build --release
+          moon -C s8fy build --target native --release
           moon -C moon-tex build --target all --release
           moon -C parser-mbt build --target all --release
           moon -C emf-mbt build --target wasm-gc --release
@@ -140,10 +147,35 @@ jobs:
             $env.PATH = ($env.PATH | prepend $pdfium_lib_dir)
           }
           pnpm -r test
-          moon -C s8fy test
+          moon -C s8fy test --target native
           moon -C emf-mbt test --target all
           moon -C moon-tex test --target all
           moon -C parser-mbt test --target all
           moon -C image-converter test --target native
           moon -C pdf-converter test --target native,wasm-gc
           print '✅ Tests passed'
+
+
+      - name: Server smoke test
+        if: runner.os != 'Windows'
+        shell: bash
+        working-directory: source
+        run: |
+          set -euo pipefail
+          export LD_LIBRARY_PATH="$PWD/native/pdfium/lib:${LD_LIBRARY_PATH:-}"
+          export DYLD_LIBRARY_PATH="$PWD/native/pdfium/lib:${DYLD_LIBRARY_PATH:-}"
+          export S8FY_HOST=127.0.0.1
+          export S8FY_PORT=18080
+          export S8FY_API_KEY=secret
+          export S8FY_WORKDIR="${RUNNER_TEMP:-/tmp}/s8fy-smoke"
+          moon -C s8fy run cmd/server --target native > "${RUNNER_TEMP:-/tmp}/s8fy-server.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for _ in {1..60}; do
+            if curl -fsS "http://127.0.0.1:18080/healthz" >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          S8FY_BASE_URL=http://127.0.0.1:18080 scripts/server-smoke.sh
+          print '✅ Server smoke test passed'
