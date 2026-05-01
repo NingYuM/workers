@@ -16,6 +16,26 @@ on:
         required: false
         type: boolean
         default: true
+      customer_id:
+        description: Customer identifier embedded in the image.
+        required: false
+        default: ci
+      license_id:
+        description: License identifier embedded in the image.
+        required: false
+        default: lic_ci
+      build_id:
+        description: Build identifier embedded in the image.
+        required: false
+        default: ''
+      edition:
+        description: Edition embedded in the image.
+        required: false
+        default: ci
+      expires_at:
+        description: Optional license expiry timestamp.
+        required: false
+        default: ''
   push:
     branches:
       - main
@@ -42,6 +62,7 @@ jobs:
     outputs:
       image: ${{ steps.meta.outputs.image }}
       tags: ${{ steps.meta.outputs.tags }}
+      primary_tag: ${{ steps.meta.outputs.primary_tag }}
       source_sha: ${{ steps.meta.outputs.source_sha }}
 
     steps:
@@ -52,13 +73,6 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           ref: ${{ env.SOURCE_REF }}
           repository: ${{ secrets.SOURCE_REPO }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          check-latest: true
-          package-manager-cache: false
 
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
@@ -104,6 +118,7 @@ jobs:
           let output = (
             [
               $"image=($image)"
+              $"primary_tag=($tags | first)"
               $"source_sha=($source_sha)"
               "tags<<EOF"
               ...$tags
@@ -166,6 +181,11 @@ jobs:
           platforms: ${{ matrix.platform }}
           build-args: |
             CRESCENT_REV=${{ env.CRESCENT_REV }}
+            S8FY_CUSTOMER_ID=${{ github.event.inputs.customer_id || 'ci' }}
+            S8FY_LICENSE_ID=${{ github.event.inputs.license_id || 'lic_ci' }}
+            S8FY_BUILD_ID=${{ github.event.inputs.build_id || format('build_{0}', needs.metadata.outputs.source_sha) }}
+            S8FY_EDITION=${{ github.event.inputs.edition || 'ci' }}
+            S8FY_EXPIRES_AT=${{ github.event.inputs.expires_at || '' }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ secrets.SOURCE_REPO }}
             org.opencontainers.image.revision=${{ needs.metadata.outputs.source_sha }}
@@ -201,6 +221,14 @@ jobs:
     timeout-minutes: 10
 
     steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          path: source
+          token: ${{ secrets.ACCESS_TOKEN }}
+          ref: ${{ env.SOURCE_REF }}
+          repository: ${{ secrets.SOURCE_REPO }}
+
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
@@ -249,3 +277,54 @@ jobs:
           }
 
           ^docker buildx imagetools create ...$tag_args ...$digest_args
+
+      - name: Generate delivery record and SBOM summary
+        shell: nu {0}
+        working-directory: source
+        env:
+          IMAGE: ${{ needs.metadata.outputs.image }}
+          PRIMARY_TAG: ${{ needs.metadata.outputs.primary_tag }}
+          TAGS: ${{ needs.metadata.outputs.tags }}
+          DIGEST_DIR: ${{ runner.temp }}/digests
+          CRESCENT_REV: ${{ env.CRESCENT_REV }}
+          SOURCE_REPO: ${{ secrets.SOURCE_REPO }}
+          SOURCE_SHA: ${{ needs.metadata.outputs.source_sha }}
+          S8FY_CUSTOMER_ID: ${{ github.event.inputs.customer_id || 'ci' }}
+          S8FY_LICENSE_ID: ${{ github.event.inputs.license_id || 'lic_ci' }}
+          S8FY_BUILD_ID: ${{ github.event.inputs.build_id || format('build_{0}', needs.metadata.outputs.source_sha) }}
+          S8FY_EDITION: ${{ github.event.inputs.edition || 'ci' }}
+          S8FY_EXPIRES_AT: ${{ github.event.inputs.expires_at || '' }}
+        run: |
+          let inspect = (^docker buildx imagetools inspect $env.PRIMARY_TAG)
+          let image_digest = (
+            $inspect
+            | lines
+            | where {|line| ($line | str trim) =~ '^Digest:' }
+            | first
+            | split row ":"
+            | skip 1
+            | str join ":"
+            | str trim
+          )
+          let platform_digests = (
+            ls $env.DIGEST_DIR
+            | get name
+            | each {|path| $"unknown=sha256:($path | path basename)" }
+            | str join "\n"
+          )
+          $env.IMAGE_DIGEST = $image_digest
+          $env.PLATFORM_DIGESTS = $platform_digests
+          nu tools/generate-s8fy-delivery-record.nu \
+            --repository $env.SOURCE_REPO \
+            --revision $env.SOURCE_SHA \
+            --ref-name $env.SOURCE_REF
+
+      - name: Upload delivery record
+        uses: actions/upload-artifact@v7
+        with:
+          name: s8fy-delivery-record
+          path: |
+            source/s8fy-delivery-record.json
+            source/s8fy-image-sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 30
