@@ -63,6 +63,7 @@ jobs:
       image: ${{ steps.meta.outputs.image }}
       tags: ${{ steps.meta.outputs.tags }}
       primary_tag: ${{ steps.meta.outputs.primary_tag }}
+      expires_at: ${{ steps.meta.outputs.expires_at }}
       source_sha: ${{ steps.meta.outputs.source_sha }}
 
     steps:
@@ -89,21 +90,20 @@ jobs:
           let source_sha = (^git rev-parse HEAD | str trim)
           let sha_tag = $"sha-($source_sha | str substring 0..<12)"
           let ref_tag = (
-            $env.SOURCE_REF
-            | str replace --all "/" "-"
-            | str downcase
+            $env.SOURCE_REF | str replace --all "/" "-" | str downcase
           )
           let push_latest = "${{ github.event_name == 'push' || github.event.inputs.push_latest == 'true' }}"
           let extra_tag = (
-            "${{ github.event.inputs.tag || '' }}"
-            | str replace --all "/" "-"
-            | str downcase
+            "${{ github.event.inputs.tag || '' }}" | str replace --all "/" "-" | str downcase
           )
+          let requested_expires_at = ("${{ github.event.inputs.expires_at || '' }}" | str trim)
+          let expires_at = if $requested_expires_at == '' {
+            ((date now) + 30day) | date to-timezone UTC | format date '%Y-%m-%d'
+          } else {
+            $requested_expires_at
+          }
 
-          let base_tags = [
-            $"($image):($sha_tag)"
-            $"($image):($ref_tag)"
-          ]
+          let base_tags = [ $"($image):($sha_tag)" $"($image):($ref_tag)" ]
           let tags_with_latest = if $push_latest == "true" {
             $base_tags | append $"($image):latest"
           } else {
@@ -119,6 +119,7 @@ jobs:
             [
               $"image=($image)"
               $"primary_tag=($tags | first)"
+              $"expires_at=($expires_at)"
               $"source_sha=($source_sha)"
               "tags<<EOF"
               ...$tags
@@ -128,9 +129,7 @@ jobs:
           $"($output)\n" | save --append $env.GITHUB_OUTPUT
 
           print "Publishing tags:"
-          for tag in $tags {
-            print $"  ($tag)"
-          }
+          for tag in $tags { print $"  ($tag)" }
 
   build:
     name: Build ${{ matrix.platform }}
@@ -185,7 +184,7 @@ jobs:
             S8FY_LICENSE_ID=${{ github.event.inputs.license_id || 'lic_ci' }}
             S8FY_BUILD_ID=${{ github.event.inputs.build_id || format('build_{0}', needs.metadata.outputs.source_sha) }}
             S8FY_EDITION=${{ github.event.inputs.edition || 'ci' }}
-            S8FY_EXPIRES_AT=${{ github.event.inputs.expires_at || '' }}
+            S8FY_EXPIRES_AT=${{ needs.metadata.outputs.expires_at }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ secrets.SOURCE_REPO }}
             org.opencontainers.image.revision=${{ needs.metadata.outputs.source_sha }}
@@ -260,15 +259,15 @@ jobs:
         run: |
           let tag_args = (
             $env.TAGS
-            | lines
-            | where {|tag| ($tag | str trim) != "" }
-            | each {|tag| ["--tag" $tag] }
-            | flatten
+              | lines
+              | where {|tag| ($tag | str trim) != "" }
+              | each {|tag| ["--tag" $tag] }
+              | flatten
           )
           let digest_args = (
             ls $env.DIGEST_DIR
-            | get name
-            | each {|path| $"($env.IMAGE)@sha256:($path | path basename)" }
+              | get name
+              | each {|path| $"($env.IMAGE)@sha256:($path | path basename)" }
           )
 
           print "Creating manifest for:"
@@ -293,31 +292,33 @@ jobs:
           S8FY_LICENSE_ID: ${{ github.event.inputs.license_id || 'lic_ci' }}
           S8FY_BUILD_ID: ${{ github.event.inputs.build_id || format('build_{0}', needs.metadata.outputs.source_sha) }}
           S8FY_EDITION: ${{ github.event.inputs.edition || 'ci' }}
-          S8FY_EXPIRES_AT: ${{ github.event.inputs.expires_at || '' }}
+          S8FY_EXPIRES_AT: ${{ needs.metadata.outputs.expires_at }}
         run: |
           let inspect = (^docker buildx imagetools inspect $env.PRIMARY_TAG)
           let image_digest = (
             $inspect
-            | lines
-            | where {|line| ($line | str trim) =~ '^Digest:' }
-            | first
-            | split row ":"
-            | skip 1
-            | str join ":"
-            | str trim
+              | lines
+              | where {|line| ($line | str trim) =~ '^Digest:' }
+              | first
+              | split row ":"
+              | skip 1
+              | str join ":"
+              | str trim
           )
           let platform_digests = (
             ls $env.DIGEST_DIR
-            | get name
-            | each {|path| $"unknown=sha256:($path | path basename)" }
-            | str join "\n"
+              | get name
+              | each {|path| $"unknown=sha256:($path | path basename)" }
+              | str join "\n"
           )
           $env.IMAGE_DIGEST = $image_digest
           $env.PLATFORM_DIGESTS = $platform_digests
-          nu tools/generate-s8fy-delivery-record.nu \
-            --repository $env.SOURCE_REPO \
-            --revision $env.SOURCE_SHA \
-            --ref-name $env.SOURCE_REF
+          ( 
+            nu tools/generate-s8fy-delivery-record.nu
+              --repository $env.SOURCE_REPO
+              --revision $env.SOURCE_SHA
+              --ref-name $env.SOURCE_REF
+          )
 
       - name: Upload delivery record
         uses: actions/upload-artifact@v7
