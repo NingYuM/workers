@@ -3,6 +3,10 @@ name: Build Server Image
 on:
   workflow_dispatch:
     inputs:
+      ref:
+        required: true
+        default: 'main'
+        description: 'The git ref to run the workflow on'
       tag:
         description: Extra image tag to publish.
         required: false
@@ -38,6 +42,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          path: source
+          token: ${{ secrets.ACCESS_TOKEN }}
+          ref: ${{ github.event.inputs.ref }}
+          repository: ${{ secrets.SOURCE_REPO }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -55,6 +64,7 @@ jobs:
       - name: Resolve tool and image metadata
         id: meta
         shell: nu {0}
+        working-directory: source
         run: |
           let owner = 'hustcer'
           let image = $"($env.REGISTRY)/($owner)/($env.IMAGE_NAME)"
@@ -96,8 +106,8 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
-          context: .
           push: true
+          context: source
           platforms: linux/amd64,linux/arm64
           file: docker/s8fy-server.Dockerfile
           build-args: |
