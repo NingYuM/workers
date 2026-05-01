@@ -32,20 +32,25 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: s8fy-server
   CRESCENT_REV: feature/patch
+  SOURCE_REF: ${{ github.event.inputs.ref || 'main' }}
 
 jobs:
-  build-image:
-    name: Build and Push GHCR Image
+  metadata:
+    name: Resolve Image Metadata
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 10
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+      tags: ${{ steps.meta.outputs.tags }}
+      source_sha: ${{ steps.meta.outputs.source_sha }}
 
     steps:
-      - name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v6
         with:
           path: source
           token: ${{ secrets.ACCESS_TOKEN }}
-          ref: ${{ github.event.inputs.ref }}
+          ref: ${{ env.SOURCE_REF }}
           repository: ${{ secrets.SOURCE_REPO }}
 
       - name: Setup Node.js
@@ -59,7 +64,6 @@ jobs:
         uses: hustcer/setup-nu@v3
         with:
           check-latest: true
-          github-token: ${{ github.token }}
 
       - name: Resolve tool and image metadata
         id: meta
@@ -68,14 +72,24 @@ jobs:
         run: |
           let owner = 'hustcer'
           let image = $"($env.REGISTRY)/($owner)/($env.IMAGE_NAME)"
-          let sha_tag = $"sha-($env.GITHUB_SHA | str substring 0..<12)"
+          let source_sha = (^git rev-parse HEAD | str trim)
+          let sha_tag = $"sha-($source_sha | str substring 0..<12)"
           let ref_tag = (
-            $env.GITHUB_REF_NAME? | default "manual" | str replace --all "/" "-" | str downcase
+            $env.SOURCE_REF
+            | str replace --all "/" "-"
+            | str downcase
           )
-          let push_latest = "${{ github.event_name == 'push' || inputs.push_latest }}"
-          let extra_tag = ("${{ inputs.tag || '' }}" | str replace --all "/" "-" | str downcase)
+          let push_latest = "${{ github.event_name == 'push' || github.event.inputs.push_latest == 'true' }}"
+          let extra_tag = (
+            "${{ github.event.inputs.tag || '' }}"
+            | str replace --all "/" "-"
+            | str downcase
+          )
 
-          let base_tags = [ $"($image):($sha_tag)" $"($image):($ref_tag)" ]
+          let base_tags = [
+            $"($image):($sha_tag)"
+            $"($image):($ref_tag)"
+          ]
           let tags_with_latest = if $push_latest == "true" {
             $base_tags | append $"($image):latest"
           } else {
@@ -87,14 +101,51 @@ jobs:
             $tags_with_latest | uniq
           }
 
-          let output = ( [ $"image=($image)" "tags<<EOF" ...$tags "EOF" ] | str join "\n" )
+          let output = (
+            [
+              $"image=($image)"
+              $"source_sha=($source_sha)"
+              "tags<<EOF"
+              ...$tags
+              "EOF"
+            ] | str join "\n"
+          )
           $"($output)\n" | save --append $env.GITHUB_OUTPUT
 
           print "Publishing tags:"
-          $tags | each {|tag| print $"  ($tag)" }
+          for tag in $tags {
+            print $"  ($tag)"
+          }
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
+  build:
+    name: Build ${{ matrix.platform }}
+    needs: metadata
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+            artifact: digests-amd64
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            artifact: digests-arm64
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          path: source
+          token: ${{ secrets.ACCESS_TOKEN }}
+          ref: ${{ env.SOURCE_REF }}
+          repository: ${{ secrets.SOURCE_REPO }}
+
+      - name: Setup Nushell
+        uses: hustcer/setup-nu@v3
+        with:
+          check-latest: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -106,19 +157,95 @@ jobs:
           username: hustcer
           password: ${{ secrets.ACCESS_TOKEN }}
 
-      - name: Build and push image
+      - name: Build and push digest
+        id: build
         uses: docker/build-push-action@v7
         with:
-          push: true
           context: source
-          platforms: linux/amd64,linux/arm64
           file: source/docker/s8fy-server.Dockerfile
+          platforms: ${{ matrix.platform }}
           build-args: |
             CRESCENT_REV=${{ env.CRESCENT_REV }}
-          tags: ${{ steps.meta.outputs.tags }}
           labels: |
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ secrets.SOURCE_REPO }}
+            org.opencontainers.image.revision=${{ needs.metadata.outputs.source_sha }}
             org.opencontainers.image.description=Native s8fy HTTP server
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          outputs: type=image,name=${{ needs.metadata.outputs.image }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=s8fy-server-${{ matrix.artifact }}
+          cache-to: type=gha,mode=max,scope=s8fy-server-${{ matrix.artifact }}
+
+      - name: Export digest
+        shell: nu {0}
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          DIGEST_DIR: ${{ runner.temp }}/digests
+        run: |
+          mkdir $env.DIGEST_DIR
+          let digest = ($env.DIGEST | str replace "sha256:" "")
+          "" | save --force ($env.DIGEST_DIR | path join $digest)
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: Create Multi-Arch Manifest
+    needs:
+      - metadata
+      - build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Setup Nushell
+        uses: hustcer/setup-nu@v3
+        with:
+          check-latest: true
+
+      - name: Download digests
+        uses: actions/download-artifact@v8
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: hustcer
+          password: ${{ secrets.ACCESS_TOKEN }}
+
+      - name: Create and push manifest
+        shell: nu {0}
+        env:
+          IMAGE: ${{ needs.metadata.outputs.image }}
+          TAGS: ${{ needs.metadata.outputs.tags }}
+          DIGEST_DIR: ${{ runner.temp }}/digests
+        run: |
+          let tag_args = (
+            $env.TAGS
+            | lines
+            | where {|tag| ($tag | str trim) != "" }
+            | each {|tag| ["--tag" $tag] }
+            | flatten
+          )
+          let digest_args = (
+            ls $env.DIGEST_DIR
+            | get name
+            | each {|path| $"($env.IMAGE)@sha256:($path | path basename)" }
+          )
+
+          print "Creating manifest for:"
+          for digest in $digest_args {
+            print $"  ($digest)"
+          }
+
+          ^docker buildx imagetools create ...$tag_args ...$digest_args
