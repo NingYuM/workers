@@ -101,7 +101,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: hustcer
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.ACCESS_TOKEN }}
 
       - name: Build and push image
         uses: docker/build-push-action@v6
