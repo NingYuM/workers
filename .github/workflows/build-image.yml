@@ -108,7 +108,7 @@ jobs:
         with:
           push: true
           context: source
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           file: source/docker/s8fy-server.Dockerfile
           build-args: |
             CRESCENT_REV=${{ env.CRESCENT_REV }}
