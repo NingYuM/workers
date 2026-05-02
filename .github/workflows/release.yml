@@ -47,6 +47,13 @@ jobs:
           ref: fix/patch
           repository: NingYuM/mbtpdf
 
+      - name: Checkout Crescent
+        uses: actions/checkout@v6
+        with:
+          ref: feature/patch
+          path: refs/crescent
+          repository: hustcer/crescent
+
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
