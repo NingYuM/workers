@@ -155,6 +155,15 @@ jobs:
           moon -C pdf-converter test --target native,wasm-gc
           print '✅ Tests passed'
 
+      - name: Install Playwright Chromium
+        if: runner.os == 'macOS'
+        working-directory: source
+        run: pnpm exec playwright install chromium
+
+      - name: Visual regression gate
+        if: runner.os == 'macOS'
+        working-directory: source
+        run: pnpm release:visual
 
       - name: Server smoke test
         if: runner.os != 'Windows'
