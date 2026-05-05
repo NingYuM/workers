@@ -98,6 +98,7 @@ jobs:
           moon -C emf-mbt check --target all
           moon -C moon-tex check --target all
           moon -C parser-mbt check --target all
+          moon -C license-policy check --target wasm-gc
           moon -C image-converter check --target native
           moon -C pdf-converter check --target native,wasm-gc
           print '✅ Lint passed'
@@ -111,6 +112,7 @@ jobs:
           moon -C emf-mbt fmt --check
           moon -C moon-tex fmt --check
           moon -C parser-mbt fmt --check
+          moon -C license-policy fmt --check
           moon -C image-converter fmt --check
           moon -C pdf-converter fmt --check
           print '✅ Format check passed'
@@ -131,6 +133,7 @@ jobs:
           moon -C s8fy build --target native --release
           moon -C moon-tex build --target all --release
           moon -C parser-mbt build --target all --release
+          moon -C license-policy build cmd/main --target wasm-gc --release --strip
           moon -C emf-mbt build --target wasm-gc --release
           moon -C image-converter build cmd/main --target native --release
           moon -C pdf-converter build --target native,wasm-gc --release
@@ -146,11 +149,13 @@ jobs:
           } else {
             $env.PATH = ($env.PATH | prepend $pdfium_lib_dir)
           }
+          moon -C license-policy build cmd/main --target wasm-gc --release --strip
           pnpm -r test
           moon -C s8fy test --target native
           moon -C emf-mbt test --target all
           moon -C moon-tex test --target all
           moon -C parser-mbt test --target all
+          moon -C license-policy test --target wasm-gc
           moon -C image-converter test --target native
           moon -C pdf-converter test --target native,wasm-gc
           print '✅ Tests passed'
