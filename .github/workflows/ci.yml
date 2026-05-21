@@ -140,6 +140,7 @@ jobs:
           moon -C emf-mbt build --target wasm-gc --release
           moon -C image-converter build cmd/main --target native --release
           moon -C pdf-converter build --target native,wasm-gc --release
+          cp pdf-converter/_build/wasm-gc/release/build/cmd/main/main.wasm packages/pptx-parser/src/mbt/pdf-converter.wasm
           print '✅ Build succeeded'
 
       - name: Test
