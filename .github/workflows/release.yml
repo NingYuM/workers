@@ -7,6 +7,9 @@ on:
         required: true
         description: 'The tag to release (e.g. v0.1.0)'
 
+env:
+  NEW_MOON_MOD: 0
+
 jobs:
   build:
     name: Build Bin (${{ matrix.os }})
@@ -74,9 +77,6 @@ jobs:
 
       - name: Setup MoonBit
         uses: hustcer/setup-moonbit@main
-        with:
-          version: "0.9.2+bbe2b338f"
-          core-version: "0.9.2+bbe2b338f"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -16,6 +16,9 @@ on:
         default: "main"
         description: "The git ref to run the workflow on"
 
+env:
+  NEW_MOON_MOD: 0
+
 jobs:
   ci:
     name: CI
@@ -76,9 +79,6 @@ jobs:
 
       - name: Setup MoonBit
         uses: hustcer/setup-moonbit@main
-        with:
-          version: "0.9.2+bbe2b338f"
-          core-version: "0.9.2+bbe2b338f"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
