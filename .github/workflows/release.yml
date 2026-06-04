@@ -84,8 +84,9 @@ jobs:
         shell: nu {0}
         working-directory: source
         run: |
+          $env.S8FY_RELEASE_LINK_OPTIMIZE = '1'
           moon update
-          moon -C s8fy build --release
+          moon -C s8fy build --release --strip
           print '✅ s8fy build succeeded'
 
       - name: Prepare artifact
@@ -115,6 +116,7 @@ jobs:
               cp $'($pdfium_lib_dir)/pdfium.dll' pkg/
             }
           }
+          nu tools/optimize-s8fy-native.nu $'pkg/($bin_name)'
           if $ext == 'zip' {
             cd pkg; ^7z a $'../($archive)' *
           } else {
