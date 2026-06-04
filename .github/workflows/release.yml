@@ -101,7 +101,6 @@ jobs:
           mkdir pkg
           cp s8fy/_build/native/release/build/cmd/main/main.exe $'pkg/($bin_name)'
           cp s8fy/LICENSE pkg/LICENSE
-          cp -r native/pdfium/licenses pkg/licenses-pdfium
           nu tools/relocate-s8fy-pdfium.nu $'pkg/($bin_name)' $pdfium_lib_dir
           nu tools/optimize-s8fy-native.nu $'pkg/($bin_name)'
           if $ext == 'zip' {
