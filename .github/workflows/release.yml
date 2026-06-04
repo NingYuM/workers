@@ -102,20 +102,7 @@ jobs:
           cp s8fy/_build/native/release/build/cmd/main/main.exe $'pkg/($bin_name)'
           cp s8fy/LICENSE pkg/LICENSE
           cp -r native/pdfium/licenses pkg/licenses-pdfium
-          # Bundle pdfium and fix rpath so binary is portable
-          match $nu.os-info.name {
-            'macos' => {
-              cp $'($pdfium_lib_dir)/libpdfium.dylib' pkg/
-              ^install_name_tool -add_rpath '@executable_path' $'pkg/($bin_name)'
-            }
-            'linux' => {
-              cp $'($pdfium_lib_dir)/libpdfium.so' pkg/
-              ^patchelf --set-rpath '$ORIGIN' $'pkg/($bin_name)'
-            }
-            'windows' => {
-              cp $'($pdfium_lib_dir)/pdfium.dll' pkg/
-            }
-          }
+          nu tools/relocate-s8fy-pdfium.nu $'pkg/($bin_name)' $pdfium_lib_dir
           nu tools/optimize-s8fy-native.nu $'pkg/($bin_name)'
           if $ext == 'zip' {
             cd pkg; ^7z a $'../($archive)' *
