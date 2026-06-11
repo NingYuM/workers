@@ -198,11 +198,11 @@ jobs:
           set -euo pipefail
           export LD_LIBRARY_PATH="$PWD/native/pdfium/lib:${LD_LIBRARY_PATH:-}"
           export DYLD_LIBRARY_PATH="$PWD/native/pdfium/lib:${DYLD_LIBRARY_PATH:-}"
-          export S8FY_HOST=127.0.0.1
-          export S8FY_PORT=18080
-          export S8FY_API_KEY=secret
-          export S8FY_WORKDIR="${RUNNER_TEMP:-/tmp}/s8fy-smoke"
-          moon -C s8fy run cmd/server --target native > "${RUNNER_TEMP:-/tmp}/s8fy-server.log" 2>&1 &
+          export XDOC_HOST=127.0.0.1
+          export XDOC_PORT=18080
+          export XDOC_API_KEY=secret
+          export XDOC_WORKDIR="${RUNNER_TEMP:-/tmp}/xdoc-smoke"
+          moon -C s8fy run cmd/server --target native > "${RUNNER_TEMP:-/tmp}/xdoc-server.log" 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
           for _ in {1..60}; do
@@ -211,5 +211,5 @@ jobs:
             fi
             sleep 1
           done
-          S8FY_BASE_URL=http://127.0.0.1:18080 scripts/server-smoke.sh
+          XDOC_BASE_URL=http://127.0.0.1:18080 scripts/server-smoke.sh
           echo "✅ Server smoke test passed"

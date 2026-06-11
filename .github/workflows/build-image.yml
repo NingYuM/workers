@@ -1,4 +1,4 @@
-name: Build Server Image
+name: Build xdoc Server Image
 
 on:
   workflow_dispatch:
@@ -50,7 +50,7 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: s8fy-server
+  IMAGE_NAME: xdoc-server
   CRESCENT_REV: feature/patch
   SOURCE_REF: ${{ github.event.inputs.ref || 'main' }}
 
@@ -176,22 +176,22 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: source
-          file: source/docker/s8fy-server.Dockerfile
+          file: source/docker/xdoc-server.Dockerfile
           platforms: ${{ matrix.platform }}
           build-args: |
             CRESCENT_REV=${{ env.CRESCENT_REV }}
-            S8FY_CUSTOMER_ID=${{ github.event.inputs.customer_id || 'ci' }}
-            S8FY_LICENSE_ID=${{ github.event.inputs.license_id || 'lic_ci' }}
-            S8FY_BUILD_ID=${{ github.event.inputs.build_id || format('build_{0}', needs.metadata.outputs.source_sha) }}
-            S8FY_EDITION=${{ github.event.inputs.edition || 'ci' }}
-            S8FY_EXPIRES_AT=${{ needs.metadata.outputs.expires_at }}
+            XDOC_CUSTOMER_ID=${{ github.event.inputs.customer_id || 'ci' }}
+            XDOC_LICENSE_ID=${{ github.event.inputs.license_id || 'lic_ci' }}
+            XDOC_BUILD_ID=${{ github.event.inputs.build_id || format('build_{0}', needs.metadata.outputs.source_sha) }}
+            XDOC_EDITION=${{ github.event.inputs.edition || 'ci' }}
+            XDOC_EXPIRES_AT=${{ needs.metadata.outputs.expires_at }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ secrets.SOURCE_REPO }}
             org.opencontainers.image.revision=${{ needs.metadata.outputs.source_sha }}
-            org.opencontainers.image.description=Native s8fy HTTP server
+            org.opencontainers.image.description=Native xdoc HTTP server
           outputs: type=image,name=${{ needs.metadata.outputs.image }},push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,scope=s8fy-server-${{ matrix.artifact }}
-          cache-to: type=gha,mode=max,scope=s8fy-server-${{ matrix.artifact }}
+          cache-from: type=gha,scope=xdoc-server-${{ matrix.artifact }}
+          cache-to: type=gha,mode=max,scope=xdoc-server-${{ matrix.artifact }}
 
       - name: Export digest
         shell: nu {0}
@@ -288,11 +288,11 @@ jobs:
           CRESCENT_REV: ${{ env.CRESCENT_REV }}
           SOURCE_REPO: ${{ secrets.SOURCE_REPO }}
           SOURCE_SHA: ${{ needs.metadata.outputs.source_sha }}
-          S8FY_CUSTOMER_ID: ${{ github.event.inputs.customer_id || 'ci' }}
-          S8FY_LICENSE_ID: ${{ github.event.inputs.license_id || 'lic_ci' }}
-          S8FY_BUILD_ID: ${{ github.event.inputs.build_id || format('build_{0}', needs.metadata.outputs.source_sha) }}
-          S8FY_EDITION: ${{ github.event.inputs.edition || 'ci' }}
-          S8FY_EXPIRES_AT: ${{ needs.metadata.outputs.expires_at }}
+          XDOC_CUSTOMER_ID: ${{ github.event.inputs.customer_id || 'ci' }}
+          XDOC_LICENSE_ID: ${{ github.event.inputs.license_id || 'lic_ci' }}
+          XDOC_BUILD_ID: ${{ github.event.inputs.build_id || format('build_{0}', needs.metadata.outputs.source_sha) }}
+          XDOC_EDITION: ${{ github.event.inputs.edition || 'ci' }}
+          XDOC_EXPIRES_AT: ${{ needs.metadata.outputs.expires_at }}
         run: |
           let inspect = (^docker buildx imagetools inspect $env.PRIMARY_TAG)
           let image_digest = (
@@ -314,7 +314,7 @@ jobs:
           $env.IMAGE_DIGEST = $image_digest
           $env.PLATFORM_DIGESTS = $platform_digests
           ( 
-            nu tools/generate-s8fy-delivery-record.nu
+            nu tools/generate-xdoc-delivery-record.nu
               --repository $env.SOURCE_REPO
               --revision $env.SOURCE_SHA
               --ref-name $env.SOURCE_REF
@@ -323,9 +323,9 @@ jobs:
       - name: Upload delivery record
         uses: actions/upload-artifact@v7
         with:
-          name: s8fy-delivery-record
+          name: xdoc-delivery-record
           path: |
-            source/s8fy-delivery-record.json
-            source/s8fy-image-sbom.cdx.json
+            source/xdoc-delivery-record.json
+            source/xdoc-image-sbom.cdx.json
           if-no-files-found: error
           retention-days: 30

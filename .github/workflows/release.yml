@@ -84,10 +84,10 @@ jobs:
         shell: nu {0}
         working-directory: source
         run: |
-          $env.S8FY_RELEASE_LINK_OPTIMIZE = '1'
+          $env.XDOC_RELEASE_LINK_OPTIMIZE = '1'
           moon update
           moon -C s8fy build --release --strip
-          print '✅ s8fy build succeeded'
+          print '✅ xdoc build succeeded'
 
       - name: Prepare artifact
         shell: nu {0}
@@ -95,14 +95,14 @@ jobs:
         run: |
           let ext = '${{ matrix.ext }}'
           let target = '${{ matrix.target }}'
-          let archive = $'s8fy-($target).($ext)'
-          let bin_name = if $nu.os-info.name == 'windows' { 's8fy.exe' } else { 's8fy' }
+          let archive = $'xdoc-($target).($ext)'
+          let bin_name = if $nu.os-info.name == 'windows' { 'xdoc.exe' } else { 'xdoc' }
           let pdfium_lib_dir = (pwd | path join 'native' 'pdfium' 'lib')
           mkdir pkg
           cp s8fy/_build/native/release/build/cmd/main/main.exe $'pkg/($bin_name)'
           cp s8fy/LICENSE pkg/LICENSE
-          nu tools/relocate-s8fy-pdfium.nu $'pkg/($bin_name)' $pdfium_lib_dir
-          nu tools/optimize-s8fy-native.nu $'pkg/($bin_name)'
+          nu tools/relocate-xdoc-pdfium.nu $'pkg/($bin_name)' $pdfium_lib_dir
+          nu tools/optimize-xdoc-native.nu $'pkg/($bin_name)'
           if $ext == 'zip' {
             cd pkg; ^7z a $'../($archive)' *
           } else {
@@ -113,8 +113,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: s8fy-${{ matrix.target }}.${{ matrix.ext }}
-          path: source/s8fy-${{ matrix.target }}.${{ matrix.ext }}
+          name: xdoc-${{ matrix.target }}.${{ matrix.ext }}
+          path: source/xdoc-${{ matrix.target }}.${{ matrix.ext }}
 
   release:
     name: Create Release
