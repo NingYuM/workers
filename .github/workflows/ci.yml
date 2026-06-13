@@ -42,13 +42,6 @@ jobs:
           ref: ${{ github.event.inputs.ref }}
           repository: ${{ secrets.SOURCE_REPO }}
 
-      - name: Checkout mbtpdf
-        uses: actions/checkout@v6
-        with:
-          path: mbtpdf
-          ref: feature/patch
-          repository: NingYuM/mbtpdf
-
       - name: Checkout Crescent
         uses: actions/checkout@v6
         with:
