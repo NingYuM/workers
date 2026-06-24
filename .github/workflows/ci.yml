@@ -35,7 +35,7 @@ jobs:
         run: git config --global core.autocrlf false
 
       - name: Checkout source
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: source
           token: ${{ secrets.ACCESS_TOKEN }}
@@ -43,7 +43,7 @@ jobs:
           repository: ${{ secrets.SOURCE_REPO }}
 
       - name: Checkout Crescent
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: feature/patch
           path: refs/crescent
