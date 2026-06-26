@@ -78,7 +78,7 @@ jobs:
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
-          check-latest: true
+          version: 'nightly'
 
       - name: Resolve tool and image metadata
         id: meta
@@ -90,11 +90,11 @@ jobs:
           let source_sha = (^git rev-parse HEAD | str trim)
           let sha_tag = $"sha-($source_sha | str substring 0..<12)"
           let ref_tag = (
-            $env.SOURCE_REF | str replace --all "/" "-" | str downcase
+            $env.SOURCE_REF | str replace --all "/" "-" | str lowercase
           )
           let push_latest = "${{ github.event_name == 'push' || github.event.inputs.push_latest == 'true' }}"
           let extra_tag = (
-            "${{ github.event.inputs.tag || '' }}" | str replace --all "/" "-" | str downcase
+            "${{ github.event.inputs.tag || '' }}" | str replace --all "/" "-" | str lowercase
           )
           let requested_expires_at = ("${{ github.event.inputs.expires_at || '' }}" | str trim)
           let expires_at = if $requested_expires_at == '' {
@@ -159,7 +159,7 @@ jobs:
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
-          check-latest: true
+          version: 'nightly'
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -231,7 +231,7 @@ jobs:
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
-          check-latest: true
+          version: 'nightly'
 
       - name: Download digests
         uses: actions/download-artifact@v8
