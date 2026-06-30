@@ -108,28 +108,6 @@ jobs:
         with:
           name: xdoc-${{ matrix.target }}.${{ matrix.ext }}
           path: source/xdoc-${{ matrix.target }}.${{ matrix.ext }}
-      - name: Prepare skills bundle
-        shell: nu {0}
-        working-directory: source
-        run: |
-          let ext = '${{ matrix.ext }}'
-          let target = '${{ matrix.target }}'
-          let archive = $'xdoc-($target)-with-skills.($ext)'
-          mkdir pkg-with-skills
-          cp -r pkg/* pkg-with-skills/
-          cp -r skills pkg-with-skills/skills
-          if $ext == 'zip' {
-            cd pkg-with-skills; ^7z a $'../($archive)' *
-          } else {
-            tar -czf $archive -C pkg-with-skills .
-          }
-          print $'✅ Skills bundle ready: ($archive)'
-
-      - name: Upload skills bundle
-        uses: actions/upload-artifact@v7
-        with:
-          name: xdoc-${{ matrix.target }}-with-skills.${{ matrix.ext }}
-          path: source/xdoc-${{ matrix.target }}-with-skills.${{ matrix.ext }}
 
   release:
     name: Create Release
@@ -150,5 +128,15 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           repository: ${{ secrets.SOURCE_REPO }}
           tag_name: ${{ github.event.inputs.tag }}
+          generate_release_notes: true
+          files: artifacts/**/*
+
+      - name: Create GitHub Release for pptx-nova
+        uses: softprops/action-gh-release@v3
+        with:
+          token: ${{ secrets.ACCESS_TOKEN }}
+          repository: ${{ secrets.SKILL_REPO }}
+          tag_name: ${{ github.event.inputs.tag }}
+          target_commitish: main
           generate_release_notes: true
           files: artifacts/**/*
