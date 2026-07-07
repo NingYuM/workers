@@ -78,7 +78,7 @@ jobs:
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
-          version: 'nightly'
+          version: '*'
 
       - name: Resolve tool and image metadata
         id: meta
@@ -159,7 +159,7 @@ jobs:
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
-          version: 'nightly'
+          version: '*'
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -231,7 +231,7 @@ jobs:
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
-          version: 'nightly'
+          version: '*'
 
       - name: Download digests
         uses: actions/download-artifact@v8

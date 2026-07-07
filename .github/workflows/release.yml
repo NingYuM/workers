@@ -53,7 +53,7 @@ jobs:
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
-          version: 'nightly'
+          version: '*'
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
