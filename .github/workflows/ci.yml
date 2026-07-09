@@ -27,7 +27,7 @@ jobs:
       fail-fast: false
       matrix:
         # Moon toolchain don't support macos-26-intel?
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-15, windows-latest]
         node-version: [24]
 
     steps:
