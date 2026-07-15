@@ -16,9 +16,6 @@ on:
         default: "main"
         description: "The git ref to run the workflow on"
 
-env:
-  NEW_MOON_MOD: 0
-
 jobs:
   ci:
     name: CI

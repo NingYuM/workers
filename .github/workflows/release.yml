@@ -7,9 +7,6 @@ on:
         required: true
         description: 'The tag to release (e.g. v0.1.0)'
 
-env:
-  NEW_MOON_MOD: 0
-
 jobs:
   build:
     name: Build Bin (${{ matrix.os }})
