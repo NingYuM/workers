@@ -76,7 +76,7 @@ jobs:
         run: |
           $env.XDOC_RELEASE_LINK_OPTIMIZE = '1'
           moon update
-          moon -C s8fy build . --release --strip
+          moon -C s8fy build cmd/main --release --strip
           print '✅ xdoc build succeeded'
 
       - name: Prepare artifact
@@ -89,7 +89,7 @@ jobs:
           let bin_name = if $nu.os-info.name == 'windows' { 'xdoc.exe' } else { 'xdoc' }
           let pdfium_lib_dir = (pwd | path join 'native' 'pdfium' 'lib')
           mkdir pkg
-          cp s8fy/_build/native/release/build/cmd/main/main.exe $'pkg/($bin_name)'
+          cp _build/native/release/build/xdoc/cmd/main/main.exe $'pkg/($bin_name)'
           cp s8fy/LICENSE pkg/LICENSE
           nu tools/relocate-xdoc-pdfium.nu $'pkg/($bin_name)' $pdfium_lib_dir
           nu tools/optimize-xdoc-native.nu $'pkg/($bin_name)'
