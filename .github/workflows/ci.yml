@@ -87,14 +87,14 @@ jobs:
         run: |
           pnpm lint
           nu tools/check-mbt-pkg-layout.nu
-          moon -C s8fy check --target native
-          moon -C emf-mbt check --target all
-          moon -C moon-tex check --target all
-          moon -C pptx-gen check --target all
-          moon -C parser-mbt check --target all
-          moon -C license-policy check --target wasm-gc
-          moon -C image-converter check --target native
-          moon -C pdf-converter check --target native,wasm-gc
+          moon -C s8fy check . --target native
+          moon -C emf-mbt check . --target all
+          moon -C moon-tex check . --target all
+          moon -C pptx-gen check . --target all
+          moon -C parser-mbt check . --target all
+          moon -C license-policy check . --target wasm-gc
+          moon -C image-converter check . --target native
+          moon -C pdf-converter check . --target native,wasm-gc
           print '✅ Lint passed'
 
       - name: Format check
@@ -102,14 +102,14 @@ jobs:
         working-directory: source
         run: |
           pnpm fmt:check
-          moon -C s8fy fmt --check
-          moon -C emf-mbt fmt --check
-          moon -C moon-tex fmt --check
-          moon -C pptx-gen fmt --check
-          moon -C parser-mbt fmt --check
-          moon -C license-policy fmt --check
-          moon -C image-converter fmt --check
-          moon -C pdf-converter fmt --check
+          moon -C s8fy fmt . --check
+          moon -C emf-mbt fmt . --check
+          moon -C moon-tex fmt . --check
+          moon -C pptx-gen fmt . --check
+          moon -C parser-mbt fmt . --check
+          moon -C license-policy fmt . --check
+          moon -C image-converter fmt . --check
+          moon -C pdf-converter fmt . --check
           print '✅ Format check passed'
 
       - name: Build
@@ -125,14 +125,14 @@ jobs:
           pnpm --filter @s8fy/pptx-viewer-solid build
           pnpm --filter @s8fy/pptx-viewer-svelte build
           pnpm --filter @s8fy/pptx-viewer-vue build
-          moon -C s8fy build --target native --release
-          moon -C moon-tex build --target all --release
-          moon -C pptx-gen build --target all --release
-          moon -C parser-mbt build --target all --release
+          moon -C s8fy build . --target native --release
+          moon -C moon-tex build . --target all --release
+          moon -C pptx-gen build . --target all --release
+          moon -C parser-mbt build . --target all --release
           moon -C license-policy build cmd/main --target wasm-gc --release --strip
-          moon -C emf-mbt build --target wasm-gc --release
+          moon -C emf-mbt build . --target wasm-gc --release
           moon -C image-converter build cmd/main --target native --release
-          moon -C pdf-converter build --target native,wasm-gc --release
+          moon -C pdf-converter build . --target native,wasm-gc --release
           cp pdf-converter/_build/wasm-gc/release/build/cmd/main/main.wasm packages/pptx-parser/src/mbt/pdf-converter.wasm
           print '✅ Build succeeded'
 
@@ -148,14 +148,14 @@ jobs:
           }
           moon -C license-policy build cmd/main --target wasm-gc --release --strip
           pnpm -r test
-          moon -C s8fy test --target native
-          moon -C emf-mbt test --target all
-          moon -C moon-tex test --target all
-          moon -C pptx-gen test --target all
-          moon -C parser-mbt test --target all
-          moon -C license-policy test --target wasm-gc
-          moon -C image-converter test --target native
-          moon -C pdf-converter test --target native,wasm-gc
+          moon -C s8fy test . --target native
+          moon -C emf-mbt test . --target all
+          moon -C moon-tex test . --target all
+          moon -C pptx-gen test . --target all
+          moon -C parser-mbt test . --target all
+          moon -C license-policy test . --target wasm-gc
+          moon -C image-converter test . --target native
+          moon -C pdf-converter test . --target native,wasm-gc
           print '✅ Tests passed'
 
       - name: Setup just

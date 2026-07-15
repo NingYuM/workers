@@ -76,7 +76,7 @@ jobs:
         run: |
           $env.XDOC_RELEASE_LINK_OPTIMIZE = '1'
           moon update
-          moon -C s8fy build --release --strip
+          moon -C s8fy build . --release --strip
           print '✅ xdoc build succeeded'
 
       - name: Prepare artifact
