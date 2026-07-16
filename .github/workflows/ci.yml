@@ -158,11 +158,14 @@ jobs:
           moon -C pdf-converter test . --target native,wasm-gc
           print '✅ Tests passed'
 
-      - name: Setup just
+      - name: Setup Agent gate tools
         if: runner.os == 'macOS'
         run: |
           if ! command -v just >/dev/null 2>&1; then
             brew install just
+          fi
+          if ! command -v rg >/dev/null 2>&1; then
+            brew install ripgrep
           fi
 
       - name: Agent gate
