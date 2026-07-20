@@ -167,11 +167,14 @@ jobs:
           if ! command -v rg >/dev/null 2>&1; then
             brew install ripgrep
           fi
+          pnpm i -g @officecli/officecli
 
       - name: Agent gate
         if: runner.os == 'macOS'
         working-directory: source
-        run: just agent-pptx-gate
+        run: |
+          just agent-pptx-gate
+          just openxml-validate --suite --require
 
       - name: Install Playwright Chromium
         if: runner.os == 'macOS'
