@@ -11,6 +11,8 @@ jobs:
   build:
     name: Build Bin (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    env:
+      PPTX_PDFIUM_LINK_MODE: static
     strategy:
       fail-fast: false
       matrix:
@@ -61,10 +63,6 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Install patchelf (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get install -y patchelf
-
       - name: Setup MoonBit
         uses: hustcer/setup-moonbit@main
         env:
@@ -93,6 +91,7 @@ jobs:
           cp s8fy/LICENSE pkg/LICENSE
           nu tools/relocate-xdoc-pdfium.nu $'pkg/($bin_name)' $pdfium_lib_dir
           nu tools/optimize-xdoc-native.nu $'pkg/($bin_name)'
+          nu tools/verify-xdoc-static.nu $'pkg/($bin_name)' test-fixtures/agent-pptx/inspect-smoke.pptx
           if $ext == 'zip' {
             cd pkg; ^7z a $'../($archive)' *
           } else {
