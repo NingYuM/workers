@@ -169,6 +169,11 @@ jobs:
           fi
           pnpm i -g @officecli/officecli
 
+      - name: OpRaw fixture gate
+        if: runner.os == 'macOS'
+        working-directory: source
+        run: just pdf-opraw-fixtures
+
       - name: Agent gate
         if: runner.os == 'macOS'
         working-directory: source
