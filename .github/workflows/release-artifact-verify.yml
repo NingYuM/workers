@@ -139,9 +139,84 @@ jobs:
           }
 
       - name: Upload verification evidence
+        id: evidence
         uses: actions/upload-artifact@v7
         with:
           name: release-verification-${{ matrix.target }}
           path: ${{ runner.temp }}/release-evidence/verification.json
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish verification summary
+        shell: nu {0}
+        env:
+          EVIDENCE_ARTIFACT_URL: ${{ steps.evidence.outputs.artifact-url }}
+          EVIDENCE_PATH: ${{ runner.temp }}/release-evidence/verification.json
+        run: |
+          let evidence_path = ($env.EVIDENCE_PATH | path expand --strict)
+          let evidence = (open $evidence_path)
+          if ($evidence.schemaVersion? | default '') != 'xdoc-static-release-verification/v1' {
+            error make {msg: 'Unexpected release verification evidence schema'}
+          }
+
+          let target = ($evidence.target? | default 'unknown' | into string)
+          let status = ($evidence.status? | default 'unknown' | into string)
+          let version = ($evidence.version? | default 'unknown' | into string)
+          let platform = ($evidence.platform? | default {})
+          let platform_os = ($platform.os? | default 'unknown' | into string)
+          let platform_arch = ($platform.arch? | default 'unknown' | into string)
+          let archive = ($evidence.archive? | default {})
+          let archive_name = ($archive.name? | default 'unknown' | into string)
+          let archive_size = ($archive.sizeBytes? | default 0 | into int)
+          let archive_sha = ($archive.sha256? | default 'unknown' | into string)
+          let binary = ($evidence.binary? | default {})
+          let binary_name = ($binary.name? | default 'unknown' | into string)
+          let binary_size = ($binary.sizeBytes? | default 0 | into int)
+          let binary_sha = ($binary.sha256? | default 'unknown' | into string)
+          let agent_schema = ($evidence.agentSchemaVersion? | default 'unknown' | into string)
+          let inspect_schema = ($evidence.pptxInspectSchemaVersion? | default 'unknown' | into string)
+          let slide_count = ($evidence.slideCount? | default 0 | into int)
+          let pdfium = ($evidence.pdfium? | default {})
+          let pdfium_provider = ($pdfium.provider? | default 'unknown' | into string)
+          let pdfium_version = ($pdfium.version? | default 'unknown' | into string)
+          let pdfium_link_mode = ($pdfium.linkMode? | default 'unknown' | into string)
+          let pdfium_sha = ($pdfium.sha256? | default 'unknown' | into string)
+          let checks = ($evidence.checks? | default [])
+          let check_lines = ($checks | each {|check| $'- `($check)`' })
+          let artifact_url = ($env.EVIDENCE_ARTIFACT_URL | str trim)
+          let artifact_line = if $artifact_url == '' {
+            'Raw verification JSON artifact URL is unavailable.'
+          } else {
+            ['[Download raw `verification.json`](' $artifact_url ')'] | str join ''
+          }
+          let summary = ([
+            $'## xdoc release verification: `($target)`'
+            ''
+            $'**Status:** ✅ `($status)` · **Checks:** `($checks | length)` passed'
+            ''
+            '| Field | Evidence |'
+            '| --- | --- |'
+            $'| xdoc version | `($version)` |'
+            $'| Platform | `($platform_os)/($platform_arch)` |'
+            $'| Archive | `($archive_name)` · `($archive_size)` bytes |'
+            $'| Archive SHA-256 | `($archive_sha)` |'
+            $'| Binary | `($binary_name)` · `($binary_size)` bytes |'
+            $'| Binary SHA-256 | `($binary_sha)` |'
+            $'| Agent schema | `($agent_schema)` |'
+            $'| PPTX inspect | `($inspect_schema)` · `($slide_count)` slides |'
+            $'| PDFium | `($pdfium_provider)` `($pdfium_version)` · `($pdfium_link_mode)` |'
+            $'| PDFium SHA-256 | `($pdfium_sha)` |'
+            ''
+            '<details><summary>Executed checks</summary>'
+            ''
+            ...$check_lines
+            ''
+            '</details>'
+            ''
+            $artifact_line
+          ] | str join (char nl))
+
+          print 'Release verification evidence:'
+          print ($evidence | to json --indent 2)
+          print $'Evidence artifact: ($artifact_url)'
+          $summary | save --append $env.GITHUB_STEP_SUMMARY
