@@ -134,6 +134,9 @@ jobs:
     needs:
       - build
       - verifier-bundle
+    permissions:
+      actions: read
+      contents: read
     uses: ./.github/workflows/release-artifact-verify.yml
 
   release:
