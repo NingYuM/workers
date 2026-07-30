@@ -8,11 +8,55 @@ on:
         description: 'The tag to release (e.g. v0.1.0)'
 
 jobs:
+  source-identity:
+    name: Validate release source identity
+    runs-on: ubuntu-latest
+    outputs:
+      source_sha: ${{ steps.identity.outputs.source_sha }}
+
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@v7
+        with:
+          path: source
+          token: ${{ secrets.ACCESS_TOKEN }}
+          ref: ${{ github.event.inputs.tag }}
+          repository: ${{ secrets.SOURCE_REPO }}
+
+      - name: Setup Nushell
+        uses: hustcer/setup-nu@v3
+        with:
+          version: '*'
+
+      - name: Resolve and validate source identity
+        id: identity
+        shell: nu {0}
+        working-directory: source
+        env:
+          RELEASE_IDENTITY_PATH: ${{ runner.temp }}/release-source-identity.json
+          RELEASE_SOURCE_REF: ${{ github.event.inputs.tag }}
+        run: |
+          (nu tools/resolve-xdoc-release-identity.nu
+              --expected-ref $env.RELEASE_SOURCE_REF
+              --expected-repository '${{ secrets.SOURCE_REPO }}'
+              --report $env.RELEASE_IDENTITY_PATH
+              --github-output $env.GITHUB_OUTPUT)
+
+      - name: Upload release source identity
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-source-identity
+          path: ${{ runner.temp }}/release-source-identity.json
+          if-no-files-found: error
+          retention-days: 7
+
   build:
     name: Build Bin (${{ matrix.os }})
+    needs: source-identity
     runs-on: ${{ matrix.os }}
     env:
       PPTX_PDFIUM_LINK_MODE: static
+      XDOC_CLI_REVISION: ${{ needs.source-identity.outputs.source_sha }}
     strategy:
       fail-fast: false
       matrix:
@@ -39,7 +83,7 @@ jobs:
         with:
           path: source
           token: ${{ secrets.ACCESS_TOKEN }}
-          ref: ${{ github.event.inputs.tag }}
+          ref: ${{ needs.source-identity.outputs.source_sha }}
           repository: ${{ secrets.SOURCE_REPO }}
 
       - name: Checkout Crescent
@@ -107,6 +151,7 @@ jobs:
 
   verifier-bundle:
     name: Prepare release verifier
+    needs: source-identity
     runs-on: ubuntu-latest
 
     steps:
@@ -115,8 +160,14 @@ jobs:
         with:
           path: source
           token: ${{ secrets.ACCESS_TOKEN }}
-          ref: ${{ github.event.inputs.tag }}
+          ref: ${{ needs.source-identity.outputs.source_sha }}
           repository: ${{ secrets.SOURCE_REPO }}
+
+      - name: Download release source identity
+        uses: actions/download-artifact@v8
+        with:
+          name: release-source-identity
+          path: source
 
       - name: Upload release verifier
         uses: actions/upload-artifact@v7
@@ -126,6 +177,7 @@ jobs:
             source/tools/pdfium-link-checks.nu
             source/tools/verify-xdoc-static.nu
             source/test-fixtures/agent-pptx/inspect-smoke.pptx
+            source/release-source-identity.json
           if-no-files-found: error
           retention-days: 7
 

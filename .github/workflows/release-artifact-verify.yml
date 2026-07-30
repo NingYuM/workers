@@ -78,6 +78,9 @@ jobs:
           RELEASE_INSTALL_DIR: ${{ runner.temp }}/release-install
           RELEASE_TARGET: ${{ matrix.target }}
           RELEASE_VERIFIER_DIR: ${{ runner.temp }}/release-verifier
+          WORKFLOW_REF: ${{ github.ref }}
+          WORKFLOW_REPOSITORY: ${{ github.repository }}
+          WORKFLOW_SHA: ${{ github.sha }}
         run: |
           let archive = (
             $env.RELEASE_ARTIFACT_DIR
@@ -113,6 +116,11 @@ jobs:
             | path join 'test-fixtures' 'agent-pptx' 'inspect-smoke.pptx'
             | path expand --strict
           )
+          let source_identity = (
+            $env.RELEASE_VERIFIER_DIR
+            | path join 'release-source-identity.json'
+            | path expand --strict
+          )
           mkdir $env.RELEASE_EVIDENCE_DIR
           let report = ($env.RELEASE_EVIDENCE_DIR | path join 'verification.json')
           let verify_result = (
@@ -126,6 +134,14 @@ jobs:
               $env.RELEASE_TARGET
               '--report'
               $report
+              '--source-identity'
+              $source_identity
+              '--workflow-repository'
+              $env.WORKFLOW_REPOSITORY
+              '--workflow-ref'
+              $env.WORKFLOW_REF
+              '--workflow-sha'
+              $env.WORKFLOW_SHA
             | complete
           )
           if ($verify_result.stdout | str trim) != '' {
@@ -155,16 +171,24 @@ jobs:
         run: |
           let evidence_path = ($env.EVIDENCE_PATH | path expand --strict)
           let evidence = (open $evidence_path)
-          if ($evidence.schemaVersion? | default '') != 'xdoc-static-release-verification/v1' {
+          if ($evidence.schemaVersion? | default '') != 'xdoc-static-release-verification/v2' {
             error make {msg: 'Unexpected release verification evidence schema'}
           }
 
           let target = ($evidence.target? | default 'unknown' | into string)
           let status = ($evidence.status? | default 'unknown' | into string)
-          let version = ($evidence.version? | default 'unknown' | into string)
           let platform = ($evidence.platform? | default {})
           let platform_os = ($platform.os? | default 'unknown' | into string)
           let platform_arch = ($platform.arch? | default 'unknown' | into string)
+          let source = ($evidence.source? | default {})
+          let source_repository = ($source.repository? | default 'unknown' | into string)
+          let source_ref = ($source.ref? | default 'unknown' | into string)
+          let source_sha = ($source.sha? | default 'unknown' | into string)
+          let source_version = ($source.version? | default 'unknown' | into string)
+          let workflow = ($evidence.workflow? | default {})
+          let workflow_repository = ($workflow.repository? | default 'unknown' | into string)
+          let workflow_ref = ($workflow.ref? | default 'unknown' | into string)
+          let workflow_sha = ($workflow.sha? | default 'unknown' | into string)
           let archive = ($evidence.archive? | default {})
           let archive_name = ($archive.name? | default 'unknown' | into string)
           let archive_size = ($archive.sizeBytes? | default 0 | into int)
@@ -173,6 +197,8 @@ jobs:
           let binary_name = ($binary.name? | default 'unknown' | into string)
           let binary_size = ($binary.sizeBytes? | default 0 | into int)
           let binary_sha = ($binary.sha256? | default 'unknown' | into string)
+          let binary_version = ($binary.version? | default 'unknown' | into string)
+          let binary_revision = ($binary.revision? | default 'unknown' | into string)
           let agent_schema = ($evidence.agentSchemaVersion? | default 'unknown' | into string)
           let inspect_schema = ($evidence.pptxInspectSchemaVersion? | default 'unknown' | into string)
           let slide_count = ($evidence.slideCount? | default 0 | into int)
@@ -196,7 +222,13 @@ jobs:
             ''
             '| Field | Evidence |'
             '| --- | --- |'
-            $'| xdoc version | `($version)` |'
+            $'| Source | `($source_repository)` · `($source_ref)` |'
+            $'| Source SHA | `($source_sha)` |'
+            $'| Source version | `($source_version)` |'
+            $'| Workflow | `($workflow_repository)` · `($workflow_ref)` |'
+            $'| Workflow SHA | `($workflow_sha)` |'
+            $'| xdoc version | `($binary_version)` |'
+            $'| xdoc revision | `($binary_revision)` |'
             $'| Platform | `($platform_os)/($platform_arch)` |'
             $'| Archive | `($archive_name)` · `($archive_size)` bytes |'
             $'| Archive SHA-256 | `($archive_sha)` |'
