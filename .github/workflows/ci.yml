@@ -83,6 +83,22 @@ jobs:
           pnpm install --frozen-lockfile
           print '✅ Dependencies installed'
 
+      - name: Setup ripgrep
+        shell: nu {0}
+        run: |
+          if (which rg | is-empty) {
+            match $nu.os-info.name {
+              linux => {
+                do -c { ^sudo apt-get update }
+                do -c { ^sudo apt-get install --yes ripgrep }
+              }
+              macos => { do -c { ^brew install ripgrep } }
+              windows => { do -c { ^choco install ripgrep --yes --no-progress } }
+              _ => { error make --unspanned { msg: 'Unsupported runner for ripgrep setup' } }
+            }
+          }
+          do -c { ^rg --version }
+
       - name: Lint
         shell: nu {0}
         working-directory: source
@@ -156,9 +172,6 @@ jobs:
         run: |
           if ! command -v just >/dev/null 2>&1; then
             brew install just
-          fi
-          if ! command -v rg >/dev/null 2>&1; then
-            brew install ripgrep
           fi
           pnpm i -g @officecli/officecli
 
