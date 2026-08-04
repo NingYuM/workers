@@ -86,18 +86,9 @@ jobs:
       - name: Lint
         shell: nu {0}
         working-directory: source
-        run: |
-          pnpm lint
-          nu tools/check-mbt-pkg-layout.nu
-          moon -C s8fy check . --target native
-          moon -C emf-mbt check . --target all
-          moon -C moon-tex check . --target all
-          moon -C pptx-gen check . --target all
-          moon -C parser-mbt check . --target all
-          moon -C license-policy check . --target wasm-gc
-          moon -C image-converter check . --target native
-          moon -C pdf-converter check . --target native,wasm-gc
-          print '✅ Lint passed'
+        # The stage list lives in tools/run-lint.nu, which `just lint` also
+        # calls. Inlining it here once let two gates drift out of CI unnoticed.
+        run: nu tools/run-lint.nu
 
       - name: Format check
         shell: nu {0}

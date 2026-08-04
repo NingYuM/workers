@@ -55,7 +55,7 @@ jobs:
     needs: source-identity
     runs-on: ${{ matrix.os }}
     env:
-      PPTX_PDFIUM_LINK_MODE: static
+      XDOC_PDFIUM_LINK_MODE: static
       XDOC_CLI_REVISION: ${{ needs.source-identity.outputs.source_sha }}
     strategy:
       fail-fast: false

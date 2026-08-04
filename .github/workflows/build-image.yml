@@ -51,7 +51,7 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: xdoc-server
-  CRESCENT_REV: feature/patch
+  XDOC_CRESCENT_REV: feature/patch
   SOURCE_REF: ${{ github.event.inputs.ref || 'main' }}
 
 jobs:
@@ -179,7 +179,7 @@ jobs:
           file: source/docker/xdoc-server.Dockerfile
           platforms: ${{ matrix.platform }}
           build-args: |
-            CRESCENT_REV=${{ env.CRESCENT_REV }}
+            XDOC_CRESCENT_REV=${{ env.XDOC_CRESCENT_REV }}
             XDOC_CUSTOMER_ID=${{ github.event.inputs.customer_id || 'ci' }}
             XDOC_LICENSE_ID=${{ github.event.inputs.license_id || 'lic_ci' }}
             XDOC_BUILD_ID=${{ github.event.inputs.build_id || format('build_{0}', needs.metadata.outputs.source_sha) }}
@@ -285,7 +285,7 @@ jobs:
           PRIMARY_TAG: ${{ needs.metadata.outputs.primary_tag }}
           TAGS: ${{ needs.metadata.outputs.tags }}
           DIGEST_DIR: ${{ runner.temp }}/digests
-          CRESCENT_REV: ${{ env.CRESCENT_REV }}
+          XDOC_CRESCENT_REV: ${{ env.XDOC_CRESCENT_REV }}
           SOURCE_REPO: ${{ secrets.SOURCE_REPO }}
           SOURCE_SHA: ${{ needs.metadata.outputs.source_sha }}
           XDOC_CUSTOMER_ID: ${{ github.event.inputs.customer_id || 'ci' }}
@@ -311,10 +311,12 @@ jobs:
               | each {|path| $"unknown=sha256:($path | path basename)" }
               | str join "\n"
           )
-          $env.IMAGE_DIGEST = $image_digest
-          $env.PLATFORM_DIGESTS = $platform_digests
-          ( 
+          (
             nu tools/generate-xdoc-delivery-record.nu
+              --image $env.IMAGE
+              --image-digest $image_digest
+              --tags $env.TAGS
+              --platform-digests $platform_digests
               --repository $env.SOURCE_REPO
               --revision $env.SOURCE_SHA
               --ref-name $env.SOURCE_REF
