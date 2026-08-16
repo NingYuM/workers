@@ -163,6 +163,7 @@ jobs:
           moon -C pptx-gen test . --target all
           moon -C parser-mbt test . --target all
           moon -C license-policy test . --target wasm-gc
+          moon -C license-policy test native_source --target native
           moon -C image-converter test . --target native
           moon -C pdf-converter test . --target native,wasm-gc
           print '✅ Tests passed'
@@ -205,8 +206,8 @@ jobs:
           set -euo pipefail
           export LD_LIBRARY_PATH="$PWD/native/pdfium/lib:${LD_LIBRARY_PATH:-}"
           export DYLD_LIBRARY_PATH="$PWD/native/pdfium/lib:${DYLD_LIBRARY_PATH:-}"
-          export XDOC_HOST=127.0.0.1
-          export XDOC_PORT=18080
+          export XDOC_SERVER_HOST=127.0.0.1
+          export XDOC_SERVER_PORT=18080
           export XDOC_API_KEY=secret
           export XDOC_WORKDIR="${RUNNER_TEMP:-/tmp}/xdoc-smoke"
           moon -C s8fy run cmd/server --target native > "${RUNNER_TEMP:-/tmp}/xdoc-server.log" 2>&1 &
