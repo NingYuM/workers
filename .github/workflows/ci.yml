@@ -163,6 +163,7 @@ jobs:
           moon -C pptx-gen test . --target all
           moon -C parser-mbt test . --target all
           moon -C license-policy test . --target wasm-gc
+          moon -C license-policy test cmd/main --target wasm-gc
           moon -C license-policy test native_source --target native
           moon -C image-converter test . --target native
           moon -C pdf-converter test . --target native,wasm-gc
