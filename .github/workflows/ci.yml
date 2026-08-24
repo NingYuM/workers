@@ -169,6 +169,11 @@ jobs:
           moon -C pdf-converter test . --target native,wasm-gc
           print '✅ Tests passed'
 
+      - name: Provenance signer production gate
+        shell: nu {0}
+        working-directory: source
+        run: pnpm provenance-signer:production-gate
+
       - name: Setup Agent gate tools
         if: runner.os == 'macOS'
         run: |
