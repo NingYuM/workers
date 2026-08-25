@@ -38,6 +38,8 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           ref: ${{ github.event.inputs.ref }}
           repository: ${{ secrets.SOURCE_REPO }}
+          # The provenance signer gate validates committed evidence ancestry.
+          fetch-depth: 0
 
       - name: Checkout Crescent
         uses: actions/checkout@v7
