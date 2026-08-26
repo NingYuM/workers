@@ -176,6 +176,8 @@ jobs:
         working-directory: source
         # The evidence-validating production gate runs during release checks.
         # CI validates the current deployment policy without accepting stale evidence.
+        env:
+          XDOC_AUTH_TRUST_PROFILE: ${{ github.workspace }}/source/test-fixtures/license/production-trust-profile.test.json
         run: pnpm provenance-signer:preflight
 
       - name: Setup Agent gate tools
