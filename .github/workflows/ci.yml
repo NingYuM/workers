@@ -171,10 +171,12 @@ jobs:
           moon -C pdf-converter test . --target native,wasm-gc
           print '✅ Tests passed'
 
-      - name: Provenance signer production gate
+      - name: Provenance signer remote preflight
         shell: nu {0}
         working-directory: source
-        run: pnpm provenance-signer:production-gate
+        # The evidence-validating production gate runs during release checks.
+        # CI validates the current deployment policy without accepting stale evidence.
+        run: pnpm provenance-signer:preflight
 
       - name: Setup Agent gate tools
         if: runner.os == 'macOS'
