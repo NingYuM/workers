@@ -185,6 +185,9 @@ jobs:
             brew install just
           fi
           pnpm i -g @officecli/officecli
+          # OfficeCLI downloads its native binary lazily. Finish that download
+          # before the OpenXmlValidator suite invokes it for the first time.
+          officecli --version
 
       - name: OpRaw fixture gate
         if: runner.os == 'macOS'
