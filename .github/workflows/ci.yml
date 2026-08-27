@@ -159,13 +159,17 @@ jobs:
           }
           moon -C license-policy build cmd/main --target wasm-gc --release --strip
           pnpm -r test
+          pnpm test:license-trust-profile
+          pnpm test:license-trust-compatibility
+          pnpm test:license-release-check
+          pnpm test:provenance-signer-cf-a11
+          pnpm test:provenance-signer-cf-a12
           moon -C s8fy test . --target native
           moon -C emf-mbt test . --target all
           moon -C moon-tex test . --target all
           moon -C pptx-gen test . --target all
           moon -C parser-mbt test . --target all
-          moon -C license-policy test . --target wasm-gc
-          moon -C license-policy test cmd/main --target wasm-gc
+          moon -C license-policy test . test cmd/main --target native,js,wasm-gc
           moon -C license-policy test native_source --target native
           moon -C image-converter test . --target native
           moon -C pdf-converter test . --target native,wasm-gc
