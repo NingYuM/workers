@@ -164,15 +164,17 @@ jobs:
           pnpm test:license-release-check
           pnpm test:provenance-signer-cf-a11
           pnpm test:provenance-signer-cf-a12
-          moon -C s8fy test . --target native
-          moon -C emf-mbt test . --target all
-          moon -C moon-tex test . --target all
-          moon -C pptx-gen test . --target all
-          moon -C parser-mbt test . --target all
+          moon -C s8fy test cmd/main cmd/server src/build_info src/convert src/core src/deliver src/pdf_text src/server src/support src/visual_oracle test_cases --target native
+          moon -C emf-mbt test . src/binary src/parser src/svg src/transform test --target all
+          moon -C moon-tex test . src/font_runtime src/glyph test --target all
+          moon -C pptx-gen test . src/ooxml src/opc src/spike src/xml test cmd/pptx-gen --target all
+          moon -C parser-mbt test . benchmarks cmd/main src/ooxml src/shape_path src/svg src/types src/utils src/zip test --target all
           moon -C license-policy test . test cmd/main --target native,js,wasm-gc
           moon -C license-policy test native_source --target native
-          moon -C image-converter test . --target native
-          moon -C pdf-converter test . --target native,wasm-gc
+          moon -C license-policy test cmd/provenance-service --target js
+          moon -C resource-policy test . --target all
+          moon -C image-converter test . cmd/main src/converter --target native
+          moon -C pdf-converter test . chart_core cmd/main cmd/native_main font_resolver png_encode src/chart_render src/converter src/font_parse src/font_runtime src/pdf_backend src/render_capture src/render_capture/tokenizer src/render_core src/render_support src/text_render test --target native,wasm-gc
           print '✅ Tests passed'
 
       - name: Provenance signer remote preflight
