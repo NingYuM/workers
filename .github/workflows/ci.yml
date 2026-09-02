@@ -164,7 +164,15 @@ jobs:
           pnpm test:license-release-check
           pnpm test:provenance-signer-cf-a11
           pnpm test:provenance-signer-cf-a12
-          moon -C s8fy test cmd/main cmd/server src/build_info src/convert src/core src/deliver src/pdf_text src/server src/support src/visual_oracle test_cases --target native
+          # MoonBit's redirected Windows stdout can interleave native writes
+          # inside test-driver event lines. Isolate and narrowly retry those
+          # protocol failures while keeping real test failures fatal.
+          if $nu.os-info.name == 'windows' {
+            nu --no-config-file tools/run-xdoc-cmd-main-tests.nu
+          } else {
+            moon -C s8fy test cmd/main --target native
+          }
+          moon -C s8fy test cmd/server src/build_info src/convert src/core src/deliver src/pdf_text src/server src/support src/visual_oracle test_cases --target native
           moon -C emf-mbt test . src/binary src/parser src/svg src/transform test --target all
           moon -C moon-tex test . src/font_runtime src/glyph test --target all
           moon -C pptx-gen test . src/ooxml src/opc src/spike src/xml test cmd/pptx-gen --target all
