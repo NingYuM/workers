@@ -38,11 +38,11 @@ test("rejects unsupported platform tuples with an actionable English error", () 
 
 test("rejects macOS versions older than the native binary deployment target", () => {
   assert.throws(
-    () => assertRuntimeSupport({ os: "darwin", cpu: "arm64", kernelRelease: "24.6.0" }),
-    /requires macOS 26\.0 or newer/,
+    () => assertRuntimeSupport({ os: "darwin", cpu: "arm64", kernelRelease: "21.6.0" }),
+    /requires macOS 13\.0 or newer/,
   );
   assert.equal(
-    assertRuntimeSupport({ os: "darwin", cpu: "arm64", kernelRelease: "25.0.0" }).id,
+    assertRuntimeSupport({ os: "darwin", cpu: "arm64", kernelRelease: "22.0.0" }).id,
     "macos-arm64",
   );
 });

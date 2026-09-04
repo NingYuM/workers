@@ -27,8 +27,8 @@
       "assetName": "xdoc-macos-arm64.tar.gz",
       "archiveType": "tar.gz",
       "binaryName": "xdoc",
-      "minimumOsVersion": "26.0",
-      "minimumKernelMajor": 25
+      "minimumOsVersion": "13.0",
+      "minimumKernelMajor": 22
     },
     {
       "id": "windows-x64",
