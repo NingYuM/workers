@@ -14,6 +14,7 @@ const {
   supportedPlatformIds,
 } = require("../lib/platform.cjs");
 const { containsExactVersion } = require("../lib/version.cjs");
+const { parsePackReport } = require("../scripts/verify-staged.cjs");
 
 const projectDir = path.resolve(__dirname, "..");
 
@@ -151,4 +152,38 @@ test("matches only the exact native semantic version token", () => {
   assert.equal(containsExactVersion("xdoc v0.3.10", "0.3.10"), true);
   assert.equal(containsExactVersion("xdoc 0.3.100", "0.3.10"), false);
   assert.equal(containsExactVersion("xdoc 0.3.10-beta.1", "0.3.10"), false);
+});
+
+test("parses the npm 11 array-shaped pack report", () => {
+  const report = parsePackReport(
+    JSON.stringify([{ name: "@s8fy/xdoc", filename: "s8fy-xdoc-0.3.11.tgz" }]),
+  );
+
+  assert.equal(report.filename, "s8fy-xdoc-0.3.11.tgz");
+});
+
+test("parses the npm 12 package-keyed pack report", () => {
+  const report = parsePackReport(
+    JSON.stringify({
+      "@s8fy/xdoc": {
+        name: "@s8fy/xdoc",
+        filename: "s8fy-xdoc-0.3.11.tgz",
+      },
+    }),
+  );
+
+  assert.equal(report.filename, "s8fy-xdoc-0.3.11.tgz");
+});
+
+test("rejects npm pack output containing multiple package reports", () => {
+  assert.throws(
+    () =>
+      parsePackReport(
+        JSON.stringify({
+          "@s8fy/xdoc": { filename: "s8fy-xdoc-0.3.11.tgz" },
+          "@s8fy/xdoc-linux-x64": { filename: "s8fy-xdoc-linux-x64-0.3.11.tgz" },
+        }),
+      ),
+    /exactly one package report/,
+  );
 });

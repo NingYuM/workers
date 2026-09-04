@@ -28,6 +28,31 @@ function run(command, args, options = {}) {
   return result;
 }
 
+function parsePackReport(output) {
+  let document;
+  try {
+    document = JSON.parse(output);
+  } catch (error) {
+    fail(`npm pack returned invalid JSON: ${error.message}`, output);
+  }
+
+  const reports = Array.isArray(document)
+    ? document
+    : document !== null && typeof document === "object"
+      ? Object.values(document)
+      : [];
+  if (
+    reports.length !== 1 ||
+    reports[0] === null ||
+    typeof reports[0] !== "object" ||
+    Array.isArray(reports[0])
+  ) {
+    fail("npm pack did not return exactly one package report.", output);
+  }
+
+  return reports[0];
+}
+
 function pack(packageDirectory, destination) {
   const result = run("npm", [
     "pack",
@@ -37,12 +62,7 @@ function pack(packageDirectory, destination) {
     "--pack-destination",
     destination,
   ]);
-  let report;
-  try {
-    report = JSON.parse(result.stdout)[0];
-  } catch (error) {
-    fail(`npm pack returned invalid JSON: ${error.message}`, result.stdout);
-  }
+  const report = parsePackReport(result.stdout);
   if (!report?.filename) fail("npm pack did not report a tarball filename.");
   return path.join(destination, report.filename);
 }
@@ -113,11 +133,15 @@ function main() {
   }
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(
-    `xdoc staging verification error: ${error instanceof Error ? error.message : String(error)}`,
-  );
-  process.exitCode = 1;
+if (require.main === module) {
+  try {
+    main();
+  } catch (error) {
+    console.error(
+      `xdoc staging verification error: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    process.exitCode = 1;
+  }
 }
+
+module.exports = { parsePackReport };
