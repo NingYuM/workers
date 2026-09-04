@@ -2,6 +2,7 @@
 
 use std/assert
 use ../scripts/release-lib.nu *
+use ../scripts/check.nu [cjs-source-paths]
 use ../scripts/publish-release.nu [validate-dist-tag package-path]
 
 let project = (validate-project)
@@ -33,5 +34,10 @@ let npm_12_pack_json = '{"@s8fy/xdoc":{"name":"@s8fy/xdoc","files":[{"path":"pac
 let expected_pack_report = {name: '@s8fy/xdoc', files: [{path: 'package.json'}]}
 assert equal ($npm_11_pack_json | parse-pack-report '/tmp/xdoc-npm') $expected_pack_report
 assert equal ($npm_12_pack_json | parse-pack-report '/tmp/xdoc-npm') $expected_pack_report
+
+let cjs_source_names = (cjs-source-paths | each {|source| $source | path basename })
+assert ('index.cjs' in $cjs_source_names)
+assert ('verify-installed.cjs' in $cjs_source_names)
+assert ('launcher.test.cjs' in $cjs_source_names)
 
 print 'Release manifest tests passed.'

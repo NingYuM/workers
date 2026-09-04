@@ -23,6 +23,16 @@ def check-nushell-source [source: path] {
   }
 }
 
+# Collect JavaScript sources without brace globs, which are not portable on Windows paths.
+export def cjs-source-paths []: nothing -> list<string> {
+  ['lib' 'scripts' 'tests']
+  | each {|directory|
+      glob ($PROJECT_DIR | path join $directory '**' '*.cjs')
+    }
+  | flatten
+  | each {|path| $path | into string }
+}
+
 # Run every local release and package gate without modifying the project.
 def main [] {
   require-external 'node'
@@ -37,10 +47,7 @@ def main [] {
   }
   print ($node_tests.stdout | str trim)
 
-  for source in (
-    glob ($PROJECT_DIR | path join '{lib,scripts,tests}/**/*.cjs')
-    | each {|path| $path | into string }
-  ) {
+  for source in (cjs-source-paths) {
     let syntax = (^node --check $source | complete)
     if $syntax.exit_code != 0 {
       fail $'Node.js syntax check failed for ($source).' ($syntax.stderr | str trim)
