@@ -26,8 +26,9 @@ assert equal (validate-dist-tag 'latest') 'latest'
 assert equal (validate-dist-tag 'next-1') 'next-1'
 assert error {|| validate-dist-tag '0.3.10' }
 assert error {|| validate-dist-tag '../latest' }
-assert equal (package-path '/tmp/xdoc-staging' 'packages/base') '/tmp/xdoc-staging/packages/base'
-assert error {|| package-path '/tmp/xdoc-staging' '../outside' }
+let staging_dir = ($PROJECT_DIR | path join '.test-staging')
+assert equal (package-path $staging_dir 'packages/base') ($staging_dir | path join 'packages' 'base')
+assert error {|| package-path $staging_dir '../outside' }
 
 let npm_11_pack_json = '[{"name":"@s8fy/xdoc","files":[{"path":"package.json"}]}]'
 let npm_12_pack_json = '{"@s8fy/xdoc":{"name":"@s8fy/xdoc","files":[{"path":"package.json"}]}}'

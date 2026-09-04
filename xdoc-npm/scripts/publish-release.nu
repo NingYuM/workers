@@ -27,7 +27,7 @@ export def package-path [staging_dir: path, relative: string]: nothing -> path {
   ) {
     fail $'Invalid package directory in release plan: ($relative)'
   }
-  $staging_dir | path join $normalized
+  $staging_dir | path join ...($normalized | split row '/')
 }
 
 def registry-package [name: string, version: string]: nothing -> any {
