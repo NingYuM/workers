@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "xdoc-npm-release-lock/v1",
+  "source": {
+    "repository": "hustcer/pptx",
+    "tag": "v0.3.10",
+    "version": "0.3.10"
+  },
+  "assets": {
+    "linux-arm64": {
+      "name": "xdoc-linux-arm64.tar.gz",
+      "sha256": "dfd53a1908116f8ba351cdb7d3cc0fc5694764df6d228a4e097d91ccd7205e9e",
+      "sizeBytes": 8133478
+    },
+    "linux-x64": {
+      "name": "xdoc-linux-x64.tar.gz",
+      "sha256": "d4a1dd232eb4c9da2132380b18725a94576ea3f3c2600c80f6b07cadd8a95faa",
+      "sizeBytes": 8429039
+    },
+    "macos-arm64": {
+      "name": "xdoc-macos-arm64.tar.gz",
+      "sha256": "df2abb8fbdf4cdd82c3fe590f400275f466137172fb429118665030b65519342",
+      "sizeBytes": 7513292
+    },
+    "windows-x64": {
+      "name": "xdoc-windows-x64.zip",
+      "sha256": "978aa25399c860d30f6a12be0d568bb69e088f72c5b22d04ff93d040934bc44b",
+      "sizeBytes": 7785101
+    }
+  }
+}

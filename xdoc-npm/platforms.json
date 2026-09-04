@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "xdoc-npm-platforms/v1",
+  "platforms": [
+    {
+      "id": "linux-arm64",
+      "os": "linux",
+      "cpu": "arm64",
+      "packageName": "@s8fy/xdoc-linux-arm64",
+      "assetName": "xdoc-linux-arm64.tar.gz",
+      "archiveType": "tar.gz",
+      "binaryName": "xdoc"
+    },
+    {
+      "id": "linux-x64",
+      "os": "linux",
+      "cpu": "x64",
+      "packageName": "@s8fy/xdoc-linux-x64",
+      "assetName": "xdoc-linux-x64.tar.gz",
+      "archiveType": "tar.gz",
+      "binaryName": "xdoc"
+    },
+    {
+      "id": "macos-arm64",
+      "os": "darwin",
+      "cpu": "arm64",
+      "packageName": "@s8fy/xdoc-macos-arm64",
+      "assetName": "xdoc-macos-arm64.tar.gz",
+      "archiveType": "tar.gz",
+      "binaryName": "xdoc",
+      "minimumOsVersion": "26.0",
+      "minimumKernelMajor": 25
+    },
+    {
+      "id": "windows-x64",
+      "os": "win32",
+      "cpu": "x64",
+      "packageName": "@s8fy/xdoc-windows-x64",
+      "assetName": "xdoc-windows-x64.zip",
+      "archiveType": "zip",
+      "binaryName": "xdoc.exe"
+    }
+  ]
+}

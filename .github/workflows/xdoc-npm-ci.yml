@@ -1,0 +1,63 @@
+name: xdoc npm CI
+
+on:
+  pull_request:
+    paths:
+      - "xdoc-npm/**"
+      - ".github/workflows/xdoc-npm-ci.yml"
+      - ".github/workflows/xdoc-npm-publish.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "xdoc-npm/**"
+      - ".github/workflows/xdoc-npm-ci.yml"
+      - ".github/workflows/xdoc-npm-publish.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xdoc-npm-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x64
+            runner: ubuntu-latest
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+          - platform: macos-arm64
+            runner: macos-26
+          - platform: windows-x64
+            runner: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Set up Nushell
+        uses: hustcer/setup-nu@9215c80adb545a85c419d5085b76eb6d082f49e7 # v3
+        with:
+          version: "0.115.1"
+
+      - name: Pin npm
+        run: npm install --global npm@12.0.2 --ignore-scripts
+
+      - name: Run package and release checks
+        working-directory: xdoc-npm
+        run: nu --no-config-file scripts/check.nu

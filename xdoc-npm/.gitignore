@@ -1,0 +1,3 @@
+staging/
+.staging-artifact/
+*.tgz

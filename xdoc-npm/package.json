@@ -1,0 +1,53 @@
+{
+  "name": "@s8fy/xdoc",
+  "version": "0.3.10",
+  "description": "The xdoc CLI packaged for installation through npm.",
+  "keywords": [
+    "cli",
+    "document",
+    "pdf",
+    "pptx",
+    "xdoc"
+  ],
+  "homepage": "https://github.com/hustcer/pptx-nova",
+  "bugs": {
+    "url": "https://github.com/hustcer/pptx-nova/issues"
+  },
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "author": "hustcer",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hustcer/pptx-nova.git",
+    "directory": "xdoc-npm"
+  },
+  "bin": {
+    "xdoc": "lib/index.cjs"
+  },
+  "files": [
+    "lib",
+    "platforms.json"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "registry": "https://registry.npmjs.org"
+  },
+  "scripts": {
+    "preinstall": "node lib/check-platform.cjs",
+    "test": "node --test tests/*.test.cjs"
+  },
+  "optionalDependencies": {
+    "@s8fy/xdoc-linux-arm64": "0.3.10",
+    "@s8fy/xdoc-linux-x64": "0.3.10",
+    "@s8fy/xdoc-macos-arm64": "0.3.10",
+    "@s8fy/xdoc-windows-x64": "0.3.10"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "preferUnplugged": true,
+  "xdoc": {
+    "releaseTag": "v0.3.10",
+    "sourceRepository": "hustcer/pptx"
+  }
+}

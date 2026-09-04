@@ -1,0 +1,251 @@
+name: Publish xdoc npm packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      dist_tag:
+        description: npm dist-tag for all five packages
+        required: true
+        type: string
+        default: latest
+      bootstrap_token_auth:
+        description: One-time first publish with the temporary NPM_BOOTSTRAP_TOKEN secret
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xdoc-npm-publish
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      release_tag: ${{ steps.release.outputs.release_tag }}
+
+    steps:
+      - name: Require the main branch
+        run: |
+          if [ "$GITHUB_REF" != 'refs/heads/main' ]; then
+            echo 'xdoc npm releases must run from the main branch.' >&2
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Set up Nushell
+        uses: hustcer/setup-nu@9215c80adb545a85c419d5085b76eb6d082f49e7 # v3
+        with:
+          version: "0.115.1"
+
+      - name: Pin npm
+        run: npm install --global npm@12.0.2 --ignore-scripts
+
+      - name: Run package and release checks
+        working-directory: xdoc-npm
+        run: nu --no-config-file scripts/check.nu
+
+      - name: Resolve release metadata
+        id: release
+        shell: nu {0}
+        working-directory: xdoc-npm
+        run: |
+          let lock = (open release-lock.json)
+          let output = ([
+            $"version=($lock.source.version)"
+            $"release_tag=($lock.source.tag)"
+          ] | str join (char nl))
+          $"($output)(char nl)" | save --append $env.GITHUB_OUTPUT
+
+      - name: Prepare all npm packages
+        working-directory: xdoc-npm
+        env:
+          XDOC_SOURCE_TOKEN: ${{ secrets.XDOC_SOURCE_TOKEN }}
+          STAGING_DIR: ${{ runner.temp }}/xdoc-npm-staging
+        run: nu --no-config-file scripts/prepare-release.nu --out "$STAGING_DIR"
+
+      - name: Archive staging packages with executable permissions
+        env:
+          STAGING_ARCHIVE: ${{ runner.temp }}/xdoc-npm-staging.tar.gz
+          STAGING_DIR: ${{ runner.temp }}/xdoc-npm-staging
+        run: tar -czf "$STAGING_ARCHIVE" -C "$STAGING_DIR" packages release-plan.json
+
+      - name: Upload verified staging packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: xdoc-npm-staging
+          path: ${{ runner.temp }}/xdoc-npm-staging.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+
+  preflight:
+    name: Preflight ${{ matrix.platform }}
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x64
+            runner: ubuntu-latest
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+          - platform: macos-arm64
+            runner: macos-26
+          - platform: windows-x64
+            runner: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Pin npm
+        run: npm install --global npm@12.0.2 --ignore-scripts
+
+      - name: Download verified staging packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: xdoc-npm-staging
+          path: xdoc-npm/.staging-artifact
+
+      - name: Extract staging packages with executable permissions
+        shell: bash
+        run: |
+          mkdir -p xdoc-npm/staging
+          tar -xzf xdoc-npm/.staging-artifact/xdoc-npm-staging.tar.gz -C xdoc-npm/staging
+
+      - name: Install and run the staged native binary
+        shell: bash
+        env:
+          EXPECTED_PLATFORM: ${{ matrix.platform }}
+          XDOC_VERSION: ${{ needs.prepare.outputs.version }}
+        run: node xdoc-npm/scripts/verify-staged.cjs xdoc-npm/staging "$XDOC_VERSION" "$EXPECTED_PLATFORM"
+
+  publish:
+    name: Publish verified packages
+    needs:
+      - prepare
+      - preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      version: ${{ needs.prepare.outputs.version }}
+      release_tag: ${{ needs.prepare.outputs.release_tag }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - name: Set up Nushell
+        uses: hustcer/setup-nu@9215c80adb545a85c419d5085b76eb6d082f49e7 # v3
+        with:
+          version: "0.115.1"
+
+      - name: Pin npm
+        run: npm install --global npm@12.0.2 --ignore-scripts
+
+      - name: Run package and release checks
+        working-directory: xdoc-npm
+        run: nu --no-config-file scripts/check.nu
+
+      - name: Download preflighted staging packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: xdoc-npm-staging
+          path: xdoc-npm/.staging-artifact
+
+      - name: Extract preflighted staging packages
+        run: |
+          mkdir -p xdoc-npm/staging
+          tar -xzf xdoc-npm/.staging-artifact/xdoc-npm-staging.tar.gz -C xdoc-npm/staging
+
+      - name: Publish with OIDC trusted publishing
+        if: ${{ !inputs.bootstrap_token_auth }}
+        working-directory: xdoc-npm
+        env:
+          DIST_TAG: ${{ inputs.dist_tag }}
+        run: nu --no-config-file scripts/publish-release.nu ./staging --dist-tag "$DIST_TAG"
+
+      - name: Publish the one-time bootstrap with provenance
+        if: ${{ inputs.bootstrap_token_auth }}
+        working-directory: xdoc-npm
+        env:
+          DIST_TAG: ${{ inputs.dist_tag }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}
+        run: nu --no-config-file scripts/publish-release.nu ./staging --dist-tag "$DIST_TAG" --allow-token-auth
+
+  smoke:
+    name: Smoke test ${{ matrix.platform }}
+    needs: publish
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x64
+            runner: ubuntu-latest
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+          - platform: macos-arm64
+            runner: macos-26
+          - platform: windows-x64
+            runner: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Pin npm
+        run: npm install --global npm@12.0.2 --ignore-scripts
+
+      - name: Install the exact published version
+        shell: bash
+        env:
+          XDOC_VERSION: ${{ needs.publish.outputs.version }}
+        run: npm install --global "@s8fy/xdoc@${XDOC_VERSION}" --registry=https://registry.npmjs.org
+
+      - name: Verify the installed native binary
+        shell: bash
+        env:
+          EXPECTED_PLATFORM: ${{ matrix.platform }}
+          XDOC_VERSION: ${{ needs.publish.outputs.version }}
+        run: node xdoc-npm/scripts/verify-installed.cjs "$XDOC_VERSION" "$EXPECTED_PLATFORM"
