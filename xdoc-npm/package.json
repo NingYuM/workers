@@ -1,6 +1,6 @@
 {
   "name": "@s8fy/xdoc",
-  "version": "0.3.11",
+  "version": "0.3.12",
   "description": "The xdoc CLI packaged for installation through npm.",
   "keywords": [
     "cli",
@@ -37,17 +37,17 @@
     "test": "node --test tests/*.test.cjs"
   },
   "optionalDependencies": {
-    "@s8fy/xdoc-linux-arm64": "0.3.11",
-    "@s8fy/xdoc-linux-x64": "0.3.11",
-    "@s8fy/xdoc-macos-arm64": "0.3.11",
-    "@s8fy/xdoc-windows-x64": "0.3.11"
+    "@s8fy/xdoc-linux-arm64": "0.3.12",
+    "@s8fy/xdoc-linux-x64": "0.3.12",
+    "@s8fy/xdoc-macos-arm64": "0.3.12",
+    "@s8fy/xdoc-windows-x64": "0.3.12"
   },
   "engines": {
     "node": ">=22.0.0"
   },
   "preferUnplugged": true,
   "xdoc": {
-    "releaseTag": "v0.3.11",
+    "releaseTag": "v0.3.12",
     "sourceRepository": "hustcer/pptx"
   }
 }
