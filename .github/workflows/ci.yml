@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Moon toolchain don't support macos-26-intel?
+        # Keep macOS pinned so compiler SDK behavior cannot drift with macos-latest.
         os: [ubuntu-latest, ubuntu-24.04-arm, macos-15, windows-latest]
         node-version: [24]
 
@@ -54,6 +54,11 @@ jobs:
         with:
           version: '*'
 
+      - name: Configure macOS deployment target
+        if: runner.os == 'macOS'
+        shell: nu {0}
+        run: "'MACOSX_DEPLOYMENT_TARGET=13.0' | save --append $env.GITHUB_ENV"
+
       - name: Setup pnpm
         uses: pnpm/setup@v2
         with:
@@ -73,7 +78,7 @@ jobs:
           arch: x64
 
       - name: Setup MoonBit
-        uses: hustcer/setup-moonbit@main
+        uses: hustcer/setup-moonbit@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -24,6 +24,15 @@ system, architecture, or operating system version. The minimum supported
 Node.js version is 22. The macOS requirement reflects the deployment target of
 the current upstream native binary.
 
+The locked v0.3.10 macOS asset predates the native deployment-target fix and
+must not be published as compatible with older macOS releases. The npm
+preflight and smoke jobs intentionally run on macOS 15, so this asset will fail
+closed. Cut a new upstream xdoc release with `MACOSX_DEPLOYMENT_TARGET=13.0`,
+then update `minimumOsVersion` to `13.0` and `minimumKernelMajor` to `22` in
+`platforms.json` together with the version and release lock. macOS 13 is the
+current lower bound because the statically linked PDFium archive has a macOS
+13 deployment target.
+
 ## Source and issue reporting
 
 This directory contains only the npm packaging and release automation. The
@@ -74,6 +83,8 @@ directory.
 
    Review every asset name, byte size, and SHA-256 change. Also review the
    native deployment targets when the upstream build configuration changes.
+   For macOS, confirm the upstream release verification evidence records
+   `minimumOsVersion: 13.0` before lowering the values in `platforms.json`.
    The update script never commits, tags, pushes, or stages unrelated files.
 
 3. Run the local gates, then perform a complete local staging rehearsal:

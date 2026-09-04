@@ -33,7 +33,7 @@ jobs:
           - os: ubuntu-24.04-arm
             target: linux-arm64
             ext: tar.gz
-          - os: macos-latest
+          - os: macos-15
             target: macos-arm64
             ext: tar.gz
           - os: windows-latest
@@ -209,6 +209,9 @@ jobs:
           let pdfium_version = ($pdfium.version? | default 'unknown' | into string)
           let pdfium_link_mode = ($pdfium.linkMode? | default 'unknown' | into string)
           let pdfium_sha = ($pdfium.sha256? | default 'unknown' | into string)
+          let macos = ($evidence.macosCompatibility? | default {})
+          let macos_minimum = ($macos.minimumOsVersion? | default 'not applicable' | into string)
+          let macos_sdk = ($macos.sdkVersion? | default 'not applicable' | into string)
           let checks = ($evidence.checks? | default [])
           let check_lines = ($checks | each {|check| $'- `($check)`' })
           let artifact_url = ($env.EVIDENCE_ARTIFACT_URL | str trim)
@@ -240,6 +243,7 @@ jobs:
             $'| PPTX inspect | `($inspect_schema)` · `($slide_count)` slides |'
             $'| PDFium | `($pdfium_provider)` `($pdfium_version)` · `($pdfium_link_mode)` |'
             $'| PDFium SHA-256 | `($pdfium_sha)` |'
+            $'| macOS deployment | minimum `($macos_minimum)` · SDK `($macos_sdk)` |'
             ''
             '<details><summary>Executed checks</summary>'
             ''
