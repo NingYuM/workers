@@ -329,6 +329,33 @@ export def require-external [name: string]: nothing -> nothing {
   }
 }
 
+# Parse the single-package report emitted by npm 11 and npm 12.
+export def parse-pack-report [package_dir: path]: string -> record {
+  let document = (try {
+    $in | from json
+  } catch {|error|
+    fail $'npm pack returned invalid JSON for ($package_dir).' ($error.msg? | default '')
+  })
+  let document_type = (($document | describe --detailed).type)
+  let reports = if $document_type == 'list' {
+    $document
+  } else if $document_type == 'record' {
+    $document | values
+  } else {
+    fail $'npm pack returned an unsupported JSON structure for ($package_dir).'
+  }
+
+  if ($reports | length) != 1 {
+    fail $'npm pack did not return exactly one package report for ($package_dir).'
+  }
+  let report = ($reports | first)
+  if (($report | describe --detailed).type) != 'record' {
+    fail $'npm pack returned an invalid package report for ($package_dir).'
+  }
+
+  $report
+}
+
 # Verify package contents using npm's final packing rules.
 export def verify-pack [package_dir: path, required_files: list<string>]: nothing -> record {
   let result = (^npm pack --dry-run --json --ignore-scripts $package_dir | complete)
@@ -336,11 +363,7 @@ export def verify-pack [package_dir: path, required_files: list<string>]: nothin
     fail $'npm pack validation failed for ($package_dir).' ($result.stderr | str trim)
   }
 
-  let report = (try {
-    $result.stdout | from json | first
-  } catch {|error|
-    fail $'npm pack returned invalid JSON for ($package_dir).' ($error.msg? | default '')
-  })
+  let report = ($result.stdout | parse-pack-report $package_dir)
   let files = ($report.files | get path)
   for required in $required_files {
     if $required not-in $files {

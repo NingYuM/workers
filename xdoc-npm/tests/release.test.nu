@@ -28,4 +28,10 @@ assert error {|| validate-dist-tag '../latest' }
 assert equal (package-path '/tmp/xdoc-staging' 'packages/base') '/tmp/xdoc-staging/packages/base'
 assert error {|| package-path '/tmp/xdoc-staging' '../outside' }
 
+let npm_11_pack_json = '[{"name":"@s8fy/xdoc","files":[{"path":"package.json"}]}]'
+let npm_12_pack_json = '{"@s8fy/xdoc":{"name":"@s8fy/xdoc","files":[{"path":"package.json"}]}}'
+let expected_pack_report = {name: '@s8fy/xdoc', files: [{path: 'package.json'}]}
+assert equal ($npm_11_pack_json | parse-pack-report '/tmp/xdoc-npm') $expected_pack_report
+assert equal ($npm_12_pack_json | parse-pack-report '/tmp/xdoc-npm') $expected_pack_report
+
 print 'Release manifest tests passed.'
