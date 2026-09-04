@@ -93,16 +93,6 @@ jobs:
           path: refs/crescent
           repository: hustcer/crescent
 
-      - name: Setup Nushell
-        uses: hustcer/setup-nu@v3
-        with:
-          version: '*'
-
-      - name: Configure macOS deployment target
-        if: runner.os == 'macOS'
-        shell: nu {0}
-        run: "'MACOSX_DEPLOYMENT_TARGET=13.0' | save --append $env.GITHUB_ENV"
-
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -118,6 +108,18 @@ jobs:
         uses: hustcer/setup-moonbit@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # setup-moonbit installs the Nushell version it needs internally. Restore
+      # the project-selected version afterward for all repository scripts.
+      - name: Setup Nushell
+        uses: hustcer/setup-nu@v3
+        with:
+          version: '*'
+
+      - name: Configure macOS deployment target
+        if: runner.os == 'macOS'
+        shell: nu {0}
+        run: "'MACOSX_DEPLOYMENT_TARGET=13.0' | save --append $env.GITHUB_ENV"
 
       - name: Build Bin
         shell: nu {0}
