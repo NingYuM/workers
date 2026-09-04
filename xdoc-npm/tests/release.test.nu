@@ -2,7 +2,7 @@
 
 use std/assert
 use ../scripts/release-lib.nu *
-use ../scripts/check.nu [cjs-source-paths]
+use ../scripts/check.nu [cjs-source-paths normalize-glob-path]
 use ../scripts/publish-release.nu [validate-dist-tag package-path]
 
 let project = (validate-project)
@@ -39,5 +39,6 @@ let cjs_source_names = (cjs-source-paths | each {|source| $source | path basenam
 assert ('index.cjs' in $cjs_source_names)
 assert ('verify-installed.cjs' in $cjs_source_names)
 assert ('launcher.test.cjs' in $cjs_source_names)
+assert equal ('D:\a\workers\workers\xdoc-npm\lib\**\*.cjs' | normalize-glob-path) 'D:/a/workers/workers/xdoc-npm/lib/**/*.cjs'
 
 print 'Release manifest tests passed.'

@@ -23,11 +23,16 @@ def check-nushell-source [source: path] {
   }
 }
 
+# Normalize native path separators before handing a pattern to Wax glob parsing.
+export def normalize-glob-path []: string -> string {
+  $in | str replace --all '\' '/'
+}
+
 # Collect JavaScript sources without brace globs, which are not portable on Windows paths.
 export def cjs-source-paths []: nothing -> list<string> {
   ['lib' 'scripts' 'tests']
   | each {|directory|
-      glob ($PROJECT_DIR | path join $directory '**' '*.cjs')
+      glob ($PROJECT_DIR | path join $directory '**' '*.cjs' | normalize-glob-path)
     }
   | flatten
   | each {|path| $path | into string }
@@ -63,7 +68,7 @@ def main [] {
   }
   print ($nu_tests.stdout | str trim)
 
-  for source in (glob ($PROJECT_DIR | path join 'scripts/*.nu') | each {|path| $path | into string }) {
+  for source in (glob ($PROJECT_DIR | path join 'scripts' '*.nu' | normalize-glob-path) | each {|path| $path | into string }) {
     check-nushell-source $source
   }
   print 'Nushell source checks passed.'
