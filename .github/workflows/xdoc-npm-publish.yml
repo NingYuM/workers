@@ -74,7 +74,7 @@ jobs:
       - name: Prepare all npm packages
         working-directory: xdoc-npm
         env:
-          XDOC_SOURCE_TOKEN: ${{ secrets.XDOC_SOURCE_TOKEN }}
+          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           STAGING_DIR: ${{ runner.temp }}/xdoc-npm-staging
         run: nu --no-config-file scripts/prepare-release.nu --out "$STAGING_DIR"
 

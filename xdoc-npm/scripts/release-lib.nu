@@ -112,9 +112,9 @@ export def expected-optional-dependencies [version: string]: nothing -> record {
 
 # Return GitHub API headers without exposing the source token in argv or logs.
 export def github-headers [accept: string = 'application/vnd.github+json']: nothing -> record {
-  let token = ($env.XDOC_SOURCE_TOKEN? | default ($env.GH_TOKEN? | default ''))
+  let token = ($env.ACCESS_TOKEN? | default ($env.GH_TOKEN? | default ''))
   if ($token | is-empty) {
-    fail 'XDOC_SOURCE_TOKEN is required to read releases from the private hustcer/pptx repository.' 'Use a fine-grained, read-only token with Contents access.'
+    fail 'ACCESS_TOKEN is required to read releases from the private hustcer/pptx repository.' 'Use a fine-grained, read-only token with Contents access.'
   }
 
   {
