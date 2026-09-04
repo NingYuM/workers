@@ -30,6 +30,33 @@ export def package-path [staging_dir: path, relative: string]: nothing -> path {
   $staging_dir | path join ...($normalized | split row '/')
 }
 
+export def parse-registry-metadata [spec: string]: string -> record {
+  let output = $in
+  let document = (try {
+    $output | from json
+  } catch {|error|
+    fail $'npm returned invalid metadata for ($spec).' ($error.msg? | default '')
+  })
+  let document_type = (($document | describe --detailed).type)
+  let records = if $document_type == 'record' {
+    [$document]
+  } else if $document_type == 'list' {
+    $document
+  } else {
+    fail $'npm returned an unsupported metadata structure for ($spec).'
+  }
+
+  if ($records | length) != 1 {
+    fail $'npm did not return exactly one metadata record for ($spec).'
+  }
+  let metadata = ($records | first)
+  if (($metadata | describe --detailed).type) != 'record' {
+    fail $'npm returned an invalid metadata record for ($spec).'
+  }
+
+  $metadata
+}
+
 def registry-package [name: string, version: string]: nothing -> any {
   let spec = $'($name)@($version)'
   let result = (^npm view $spec --json --registry $NPM_REGISTRY | complete)
@@ -41,14 +68,10 @@ def registry-package [name: string, version: string]: nothing -> any {
     fail $'Failed to query npm metadata for ($spec).' ($result.stderr | str trim)
   }
 
-  try {
-    $result.stdout | from json
-  } catch {|error|
-    fail $'npm returned invalid metadata for ($spec).' ($error.msg? | default '')
-  }
+  $result.stdout | parse-registry-metadata $spec
 }
 
-def validate-existing [plan_entry: record, package_dir: path, metadata: record, dist_tag: string] {
+export def validate-existing [plan_entry: record, package_dir: path, metadata: record, dist_tag: string] {
   let expected = (open ($package_dir | path join 'package.json'))
   if ($metadata.name? | default '') != $expected.name or ($metadata.version? | default '') != $expected.version {
     fail $'Existing npm metadata does not match ($plan_entry.name)@($plan_entry.version).'
