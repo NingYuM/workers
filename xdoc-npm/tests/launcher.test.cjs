@@ -127,7 +127,16 @@ test("keeps the public package manifest aligned with the platform manifest", () 
   );
 
   assert.equal(packageJson.name, "@s8fy/xdoc");
-  assert.equal(packageJson.repository.url, "git+https://github.com/hustcer/pptx-nova.git");
+  assert.equal(
+    packageJson.homepage,
+    "https://github.com/hustcer/workers/tree/main/xdoc-npm#readme",
+  );
+  assert.deepEqual(packageJson.bugs, { url: "https://github.com/hustcer/workers/issues" });
+  assert.deepEqual(packageJson.repository, {
+    type: "git",
+    url: "git+https://github.com/hustcer/workers.git",
+    directory: "xdoc-npm",
+  });
   assert.deepEqual(packageJson.files, ["lib", "platforms.json"]);
   assert.deepEqual(packageJson.optionalDependencies, expectedDependencies);
   assert.equal(packageJson.xdoc.releaseTag, `v${packageJson.version}`);

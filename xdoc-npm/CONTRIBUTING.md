@@ -8,15 +8,19 @@ directory.
 
 ### Repository setup
 
-- Add `ACCESS_TOKEN` as a repository secret. It must be a fine-grained,
-  read-only GitHub token with Contents access to the private `hustcer/pptx`
-  repository. The prepare job uses it only while downloading release assets.
-- Create a protected GitHub environment named `npm`. The publish job alone
-  enters this environment and receives the `id-token: write` permission.
+- Keep `hustcer/workers` public. npm provenance rejects packages built from a
+  private GitHub source repository.
+- Add `ACCESS_TOKEN` to `hustcer/workers` as a repository secret. It must be a
+  fine-grained, read-only GitHub token with Contents access to the private
+  `hustcer/pptx` repository. The prepare job uses it only while downloading
+  release assets.
+- Create a protected GitHub environment named `npm` in `hustcer/workers`. The
+  publish job alone enters this environment and receives the `id-token: write`
+  permission.
   Restrict its deployment branches to `main` and add required reviewers if
   appropriate.
 - After the one-time bootstrap below, configure all five npm packages to trust
-  GitHub owner `NingYuM`, repository `workers`, workflow filename
+  GitHub owner `hustcer`, repository `workers`, workflow filename
   `xdoc-npm-publish.yml`, and environment `npm`; enable the `npm publish`
   allowed action. Then disable token-based publishing for maximum protection.
 
@@ -54,8 +58,8 @@ directory.
    workflow:
 
    ```sh
-   gh workflow run xdoc-npm-publish.yml -f dist_tag=latest
-   gh run watch --exit-status
+   gh workflow run xdoc-npm-publish.yml --repo hustcer/workers -f dist_tag=latest
+   gh run watch --repo hustcer/workers --exit-status
    ```
 
 5. The workflow performs these gates in order:
@@ -100,8 +104,8 @@ For the first release only:
 2. Dispatch the same protected workflow with its bootstrap switch enabled:
 
 ```sh
-gh workflow run xdoc-npm-publish.yml -f dist_tag=latest -f bootstrap_token_auth=true
-gh run watch --exit-status
+gh workflow run xdoc-npm-publish.yml --repo hustcer/workers -f dist_tag=latest -f bootstrap_token_auth=true
+gh run watch --repo hustcer/workers --exit-status
 ```
 
 The bootstrap still runs every staging and four-platform preflight gate on a
@@ -118,11 +122,11 @@ export NODE_AUTH_TOKEN='replace-with-the-short-lived-token'
 export NPM_CONFIG_USERCONFIG="$(mktemp)"
 printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
 npm install --global npm@12.0.2 --ignore-scripts
-npm trust github @s8fy/xdoc --file xdoc-npm-publish.yml --repo NingYuM/workers --env npm --allow-publish -y
-npm trust github @s8fy/xdoc-linux-arm64 --file xdoc-npm-publish.yml --repo NingYuM/workers --env npm --allow-publish -y
-npm trust github @s8fy/xdoc-linux-x64 --file xdoc-npm-publish.yml --repo NingYuM/workers --env npm --allow-publish -y
-npm trust github @s8fy/xdoc-macos-arm64 --file xdoc-npm-publish.yml --repo NingYuM/workers --env npm --allow-publish -y
-npm trust github @s8fy/xdoc-windows-x64 --file xdoc-npm-publish.yml --repo NingYuM/workers --env npm --allow-publish -y
+npm trust github @s8fy/xdoc --file xdoc-npm-publish.yml --repo hustcer/workers --env npm --allow-publish -y
+npm trust github @s8fy/xdoc-linux-arm64 --file xdoc-npm-publish.yml --repo hustcer/workers --env npm --allow-publish -y
+npm trust github @s8fy/xdoc-linux-x64 --file xdoc-npm-publish.yml --repo hustcer/workers --env npm --allow-publish -y
+npm trust github @s8fy/xdoc-macos-arm64 --file xdoc-npm-publish.yml --repo hustcer/workers --env npm --allow-publish -y
+npm trust github @s8fy/xdoc-windows-x64 --file xdoc-npm-publish.yml --repo hustcer/workers --env npm --allow-publish -y
 npm logout --registry=https://registry.npmjs.org
 rm "$NPM_CONFIG_USERCONFIG"
 ```

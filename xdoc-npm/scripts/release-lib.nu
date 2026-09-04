@@ -5,6 +5,10 @@ export const PLATFORMS_PATH = path self ../platforms.json
 export const RELEASE_LOCK_PATH = path self ../release-lock.json
 export const PACKAGE_PATH = path self ../package.json
 export const SOURCE_REPOSITORY = 'hustcer/pptx'
+export const PACKAGE_REPOSITORY = 'hustcer/workers'
+export const PACKAGE_HOMEPAGE = 'https://github.com/hustcer/workers/tree/main/xdoc-npm#readme'
+export const PACKAGE_BUGS_URL = 'https://github.com/hustcer/workers/issues'
+export const PACKAGE_GIT_URL = 'git+https://github.com/hustcer/workers.git'
 export const NPM_REGISTRY = 'https://registry.npmjs.org'
 
 # Raise a consistent, unspanned release error.
@@ -198,6 +202,15 @@ export def validate-project []: nothing -> record {
   }
   if ($package.xdoc.sourceRepository? | default '') != $SOURCE_REPOSITORY {
     fail 'The base package source repository does not match the release lock.'
+  }
+  if ($package.homepage? | default '') != $PACKAGE_HOMEPAGE {
+    fail $'The base package homepage must reference ($PACKAGE_REPOSITORY).'
+  }
+  if ($package.bugs.url? | default '') != $PACKAGE_BUGS_URL {
+    fail $'The base package issue tracker must reference ($PACKAGE_REPOSITORY).'
+  }
+  if ($package.repository.url? | default '') != $PACKAGE_GIT_URL or ($package.repository.directory? | default '') != 'xdoc-npm' {
+    fail $'The base package repository must reference ($PACKAGE_REPOSITORY)/xdoc-npm.'
   }
   if $package.optionalDependencies != $expected_dependencies {
     fail 'The base package optional dependencies do not match the platform manifest.'

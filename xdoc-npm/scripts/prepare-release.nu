@@ -46,13 +46,13 @@ def platform-package [project: record, release: record, platform: record, extrac
     name: $platform.packageName
     version: $project.lock.source.version
     description: $'Native xdoc binary for ($platform.id).'
-    homepage: 'https://github.com/NingYuM/workers/tree/main/xdoc-npm#readme'
-    bugs: {url: 'https://github.com/NingYuM/workers/issues'}
+    homepage: $PACKAGE_HOMEPAGE
+    bugs: {url: $PACKAGE_BUGS_URL}
     license: 'PolyForm-Noncommercial-1.0.0'
     author: 'hustcer'
     repository: {
       type: 'git'
-      url: 'git+https://github.com/NingYuM/workers.git'
+      url: $PACKAGE_GIT_URL
       directory: 'xdoc-npm'
     }
     os: [$platform.os]

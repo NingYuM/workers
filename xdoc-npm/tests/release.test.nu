@@ -81,4 +81,7 @@ assert ('verify-installed.cjs' in $cjs_source_names)
 assert ('launcher.test.cjs' in $cjs_source_names)
 assert equal ('D:\a\workers\workers\xdoc-npm\lib\**\*.cjs' | normalize-glob-path) 'D:/a/workers/workers/xdoc-npm/lib/**/*.cjs'
 
+let publish_workflow = (open --raw ($PROJECT_DIR | path join '..' '.github' 'workflows' 'xdoc-npm-publish.yml'))
+assert ($publish_workflow | str contains 'xdoc npm releases must run from hustcer/workers.')
+
 print 'Release manifest tests passed.'

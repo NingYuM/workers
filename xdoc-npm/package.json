@@ -9,15 +9,15 @@
     "pptx",
     "xdoc"
   ],
-  "homepage": "https://github.com/hustcer/pptx-nova",
+  "homepage": "https://github.com/hustcer/workers/tree/main/xdoc-npm#readme",
   "bugs": {
-    "url": "https://github.com/hustcer/pptx-nova/issues"
+    "url": "https://github.com/hustcer/workers/issues"
   },
   "license": "PolyForm-Noncommercial-1.0.0",
   "author": "hustcer",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hustcer/pptx-nova.git",
+    "url": "git+https://github.com/hustcer/workers.git",
     "directory": "xdoc-npm"
   },
   "bin": {

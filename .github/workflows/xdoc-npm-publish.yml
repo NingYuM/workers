@@ -31,8 +31,12 @@ jobs:
       release_tag: ${{ steps.release.outputs.release_tag }}
 
     steps:
-      - name: Require the main branch
+      - name: Require the publishing repository and main branch
         run: |
+          if [ "$GITHUB_REPOSITORY" != 'hustcer/workers' ]; then
+            echo 'xdoc npm releases must run from hustcer/workers.' >&2
+            exit 1
+          fi
           if [ "$GITHUB_REF" != 'refs/heads/main' ]; then
             echo 'xdoc npm releases must run from the main branch.' >&2
             exit 1

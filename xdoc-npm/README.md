@@ -40,11 +40,10 @@ native binaries come from the private `hustcer/pptx` repository and are locked
 to reviewed GitHub Release SHA-256 digests in `release-lock.json`.
 
 - Report npm installation, package selection, or launcher issues in the
-  [`hustcer/pptx-nova` issue tracker](https://github.com/hustcer/pptx-nova/issues).
+  [`hustcer/workers` issue tracker](https://github.com/hustcer/workers/issues).
 - Report native `xdoc` behavior through the upstream project's normal support
   channel.
 
 Each platform package preserves the upstream `LICENSE` and all bundled PDFium
 third-party license notices. This software is distributed under the PolyForm
 Noncommercial License 1.0.0 unless separately licensed.
-
