@@ -126,7 +126,7 @@ test("keeps the public package manifest aligned with the platform manifest", () 
   );
 
   assert.equal(packageJson.name, "@s8fy/xdoc");
-  assert.equal(packageJson.repository.url, "git+https://github.com/NingYuM/workers.git");
+  assert.equal(packageJson.repository.url, "git+https://github.com/hustcer/pptx-nova.git");
   assert.deepEqual(packageJson.files, ["lib", "platforms.json"]);
   assert.deepEqual(packageJson.optionalDependencies, expectedDependencies);
   assert.equal(packageJson.xdoc.releaseTag, `v${packageJson.version}`);

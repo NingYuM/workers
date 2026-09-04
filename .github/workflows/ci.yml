@@ -7,6 +7,7 @@ on:
     paths-ignore:
       - "*.md"
       - "**/*.md"
+      - "xdoc-npm/**"
   pull_request:
     branches: [main]
   workflow_dispatch:
