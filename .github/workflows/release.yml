@@ -1,7 +1,4 @@
 name: Release Bin
-
-# Clear known startup injection before setup actions or release helpers start
-# Node. Candidate isolation itself is enforced by the shared bounded runner.
 env:
   NODE_OPTIONS: ''
   NODE_PATH: ''
@@ -15,14 +12,12 @@ env:
   DYLD_FALLBACK_FRAMEWORK_PATH: ''
   GCONV_PATH: ''
   LOCPATH: ''
-
 on:
   workflow_dispatch:
     inputs:
       tag:
         required: true
-        description: 'The tag to release (e.g. v0.1.0)'
-
+        description: The tag to release (e.g. v0.1.0)
 jobs:
   source-identity:
     name: Validate release source identity
@@ -30,7 +25,8 @@ jobs:
     outputs:
       source_sha: ${{ steps.identity.outputs.source_sha }}
       toolchain: ${{ steps.toolchain.outputs.versions }}
-
+      evidence_sha: ${{ steps.evidence.outputs.evidence_sha }}
+      evidence_repository: ${{ steps.evidence.outputs.evidence_repository }}
     steps:
       - name: Checkout release source
         uses: actions/checkout@v7
@@ -39,7 +35,6 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           repository: ${{ secrets.SOURCE_REPO }}
           ref: ${{ github.event.inputs.tag }}
-
       - name: Read controlled toolchain versions
         id: toolchain
         uses: actions/github-script@v8
@@ -47,22 +42,18 @@ jobs:
           script: |
             const fs = require('node:fs');
             core.setOutput('versions', JSON.parse(fs.readFileSync('source/tools/xdoc-cli-toolchain.json', 'utf8')));
-
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: ${{ fromJSON(steps.toolchain.outputs.versions).node }}
-
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
           version: ${{ fromJSON(steps.toolchain.outputs.versions).nushell }}
-
       - name: Validate release execution tools
         shell: nu {0}
         working-directory: source
         run: nu --no-config-file tools/xdoc-cli-toolchain.nu --probe
-
       - name: Resolve and validate source identity
         id: identity
         shell: nu {0}
@@ -76,7 +67,6 @@ jobs:
               --expected-repository '${{ secrets.SOURCE_REPO }}'
               --report $env.RELEASE_IDENTITY_PATH
               --github-output $env.GITHUB_OUTPUT)
-
       - name: Materialize approved public CLI trust manifest
         shell: nu {0}
         working-directory: source
@@ -93,7 +83,6 @@ jobs:
               --manifest $env.XDOC_CLI_TRUST_MANIFEST_PATH
               --check
               --json)
-
       - name: Upload release source identity
         uses: actions/upload-artifact@v7
         with:
@@ -101,7 +90,6 @@ jobs:
           path: ${{ runner.temp }}/release-source-identity.json
           if-no-files-found: error
           retention-days: 7
-
       - name: Upload approved public CLI trust manifest
         uses: actions/upload-artifact@v7
         with:
@@ -109,7 +97,18 @@ jobs:
           path: ${{ runner.temp }}/xdoc-cli-trust-manifest.json
           if-no-files-found: error
           retention-days: 1
-
+      - name: Require immutable approved evidence checkout
+        id: evidence
+        shell: nu {0}
+        env:
+          EVIDENCE_REPOSITORY: ${{ vars.XDOC_CLI_EVIDENCE_REPOSITORY }}
+          EVIDENCE_REVISION: ${{ vars.XDOC_CLI_EVIDENCE_REVISION }}
+        run: |
+          if not ($env.EVIDENCE_REVISION =~ '^[0-9a-f]{40}$') or not ($env.EVIDENCE_REPOSITORY =~ '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') {
+            error make {msg: 'Protected release requires an approved evidence repository and immutable revision'}
+          }
+          [$'evidence_sha=($env.EVIDENCE_REVISION)' $'evidence_repository=($env.EVIDENCE_REPOSITORY)' ''] | str join (char nl) | save --append $env.GITHUB_OUTPUT
+    environment: xdoc-cli-release
   build:
     name: Build xdoc (${{ matrix.os }})
     needs: source-identity
@@ -133,11 +132,9 @@ jobs:
           - os: windows-latest
             target: windows-x64
             ext: zip
-
     steps:
       - name: Configure Git line endings
         run: git config --global core.autocrlf false
-
       - name: Checkout
         uses: actions/checkout@v7
         with:
@@ -145,30 +142,29 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           repository: ${{ secrets.SOURCE_REPO }}
           ref: ${{ needs.source-identity.outputs.source_sha }}
-
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: ${{ fromJSON(needs.source-identity.outputs.toolchain).node }}
-
       - name: Checkout controlled Crescent source
         uses: actions/checkout@v7
         with:
           path: refs/crescent
-          repository: ${{ fromJSON(needs.source-identity.outputs.toolchain).nativeSources.crescent.repository }}
-          ref: ${{ fromJSON(needs.source-identity.outputs.toolchain).nativeSources.crescent.revision }}
-
+          repository: >-
+            ${{
+            fromJSON(needs.source-identity.outputs.toolchain).nativeSources.crescent.repository }}
+          ref: >-
+            ${{
+            fromJSON(needs.source-identity.outputs.toolchain).nativeSources.crescent.revision }}
       - name: Setup pnpm
         uses: pnpm/setup@v2
         with:
           version: ${{ fromJSON(needs.source-identity.outputs.toolchain).pnpm }}
-
       - name: Setup MSVC (Windows)
         if: runner.os == 'Windows'
         uses: TheMrMilchmann/setup-msvc-dev@v4
         with:
           arch: x64
-
       - name: Setup MoonBit
         uses: hustcer/setup-moonbit@v1
         with:
@@ -176,100 +172,61 @@ jobs:
           core-version: ${{ fromJSON(needs.source-identity.outputs.toolchain).moonbit.core }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # setup-moonbit installs the Nushell version it needs internally. Restore
-      # the project-selected version afterward for all repository scripts.
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
           version: ${{ fromJSON(needs.source-identity.outputs.toolchain).nushell }}
-
       - name: Validate exact release toolchain
         shell: nu {0}
         working-directory: source
         run: |
           nu --no-config-file tools/xdoc-cli-toolchain.nu
           pnpm install --frozen-lockfile
-
       - name: Configure macOS deployment target
         if: runner.os == 'macOS'
         shell: nu {0}
         run: "'MACOSX_DEPLOYMENT_TARGET=13.0' | save --append $env.GITHUB_ENV"
-
       - name: Download approved public CLI trust manifest
         uses: actions/download-artifact@v8
         with:
           name: xdoc-cli-trust-manifest
           path: ${{ runner.temp }}/xdoc-cli-trust
-
+      - name: Checkout approved release evidence
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ needs.source-identity.outputs.evidence_repository }}
+          ref: ${{ needs.source-identity.outputs.evidence_sha }}
+          token: ${{ secrets.XDOC_CLI_EVIDENCE_TOKEN }}
+          path: release-evidence
+          persist-credentials: false
       - name: Build and gate public xdoc CLI
         shell: nu {0}
         working-directory: source
         env:
-          XDOC_CLI_PACKAGE_DIR: ${{ runner.temp }}/xdoc-cli-package
-          XDOC_CLI_RELEASE_REPORT: ${{ runner.temp }}/xdoc-cli-release-check.json
+          RELEASE_EVIDENCE: ${{ github.workspace }}/release-evidence/release.json
           XDOC_CLI_TRUST_MANIFEST: ${{ runner.temp }}/xdoc-cli-trust/xdoc-cli-trust-manifest.json
           XDOC_RELEASE_SOURCE_SHA: ${{ needs.source-identity.outputs.source_sha }}
+          RELEASE_TARGET: ${{ matrix.target }}
+          CANDIDATE_OUTPUT: ${{ runner.temp }}/xdoc-candidate
         run: |
           moon update
-          (pnpm xdoc-cli:build-production
-              --manifest $env.XDOC_CLI_TRUST_MANIFEST
-              --output-dir $env.XDOC_CLI_PACKAGE_DIR
-              --json)
-          (pnpm xdoc-cli:release-check
-              --manifest $env.XDOC_CLI_TRUST_MANIFEST
-              --package-dir $env.XDOC_CLI_PACKAGE_DIR
-              --source-revision $env.XDOC_RELEASE_SOURCE_SHA
-              --report $env.XDOC_CLI_RELEASE_REPORT
-              --json)
-          print 'Public xdoc CLI build and release gate succeeded'
-
-      - name: Prepare artifact
-        shell: nu {0}
-        working-directory: source
-        env:
-          XDOC_CLI_PACKAGE_DIR: ${{ runner.temp }}/xdoc-cli-package
-          XDOC_CLI_RELEASE_REPORT: ${{ runner.temp }}/xdoc-cli-release-check.json
-        run: |
-          let ext = '${{ matrix.ext }}'
-          let target = '${{ matrix.target }}'
-          let archive = $'xdoc-($target).($ext)'
-          let archive_path = (pwd | path join $archive)
-          let bin_name = if $nu.os-info.name == 'windows' { 'xdoc.exe' } else { 'xdoc' }
-          let binary = ($env.XDOC_CLI_PACKAGE_DIR | path join $bin_name | path expand --strict)
-          let gate = (open $env.XDOC_CLI_RELEASE_REPORT)
-          if $gate.schemaVersion? != 'xdoc-cli-release-check/v1' or $gate.status? != 'passed' {
-            error make {msg: 'Public xdoc CLI release report is missing or invalid'}
-          }
-          if $gate.binary? != ($binary | into string) {
-            error make {msg: 'Public xdoc CLI release report names a different binary'}
-          }
-          if (open --raw $binary | hash sha256) != $gate.artifactScan?.artifactSha256? {
-            error make {msg: 'Public xdoc CLI changed after the release gate'}
-          }
-          let evidence = ($env.XDOC_CLI_PACKAGE_DIR | path join xdoc-cli-build-evidence.json)
-          if (open --raw $evidence | hash sha256) != $gate.buildEvidenceSha256? {
-            error make {msg: 'Public xdoc CLI build evidence changed after the release gate'}
-          }
-          if $ext == 'zip' {
-            cd $env.XDOC_CLI_PACKAGE_DIR
-            ^7z a $archive_path *
-          } else {
-            tar -czf $archive_path -C $env.XDOC_CLI_PACKAGE_DIR .
-          }
-          print $'Archive ready: ($archive)'
-
-      - name: Upload artifact
+          nu --no-config-file tools/xdoc-cli-release-target.nu --release-input $env.RELEASE_EVIDENCE --source-revision $env.XDOC_RELEASE_SOURCE_SHA --target $env.RELEASE_TARGET --trust-manifest $env.XDOC_CLI_TRUST_MANIFEST --output-dir $env.CANDIDATE_OUTPUT --require-paid
+      - name: Upload unarchived candidate and minimal reports
         uses: actions/upload-artifact@v7
         with:
-          name: xdoc-${{ matrix.target }}.${{ matrix.ext }}
-          path: source/xdoc-${{ matrix.target }}.${{ matrix.ext }}
-
+          name: xdoc-candidate-${{ matrix.target }}
+          path: |-
+            ${{ runner.temp }}/xdoc-candidate/package/
+            ${{ runner.temp }}/xdoc-candidate/gate.json
+            ${{ runner.temp }}/xdoc-candidate/paid.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7
+    environment: xdoc-cli-release
   verifier-bundle:
     name: Prepare release verifier
     needs: source-identity
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -278,13 +235,11 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           repository: ${{ secrets.SOURCE_REPO }}
           ref: ${{ needs.source-identity.outputs.source_sha }}
-
       - name: Download release source identity
         uses: actions/download-artifact@v8
         with:
           name: release-source-identity
           path: source
-
       - name: Upload release verifier
         uses: actions/upload-artifact@v7
         with:
@@ -299,24 +254,21 @@ jobs:
             source/release-source-identity.json
           if-no-files-found: error
           retention-days: 7
-
   verify:
     name: Verify packaged xdoc artifacts
     needs:
-      - build
+      - aggregate
       - verifier-bundle
     permissions:
       actions: read
       contents: read
     uses: ./.github/workflows/release-artifact-verify.yml
-
   release:
     name: Create Release
     needs: verify
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v8
@@ -324,7 +276,6 @@ jobs:
           path: artifacts
           pattern: xdoc-*.*
           merge-multiple: true
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
@@ -333,7 +284,6 @@ jobs:
           tag_name: ${{ github.event.inputs.tag }}
           generate_release_notes: true
           files: artifacts/*
-
       - name: Create GitHub Release for pptx-nova
         uses: softprops/action-gh-release@v3
         with:
@@ -343,3 +293,112 @@ jobs:
           target_commitish: main
           generate_release_notes: true
           files: artifacts/*
+  aggregate:
+    name: Aggregate all four approved candidates before archiving
+    needs:
+      - source-identity
+      - build
+    environment: xdoc-cli-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          path: source
+          token: ${{ secrets.ACCESS_TOKEN }}
+          repository: ${{ secrets.SOURCE_REPO }}
+          ref: ${{ needs.source-identity.outputs.source_sha }}
+      - name: Checkout approved release evidence
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ needs.source-identity.outputs.evidence_repository }}
+          ref: ${{ needs.source-identity.outputs.evidence_sha }}
+          token: ${{ secrets.XDOC_CLI_EVIDENCE_TOKEN }}
+          path: release-evidence
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ fromJSON(needs.source-identity.outputs.toolchain).node }}
+      - name: Setup Nushell
+        uses: hustcer/setup-nu@v3
+        with:
+          version: ${{ fromJSON(needs.source-identity.outputs.toolchain).nushell }}
+      - name: Setup pnpm
+        uses: pnpm/setup@v2
+        with:
+          version: ${{ fromJSON(needs.source-identity.outputs.toolchain).pnpm }}
+      - name: Install verifier dependencies
+        working-directory: source
+        run: pnpm install --frozen-lockfile
+      - name: Download current raw candidates
+        uses: actions/download-artifact@v8
+        with:
+          pattern: xdoc-candidate-*
+          path: ${{ runner.temp }}/release-candidates
+      - name: Require four-target Paid aggregation
+        shell: nu {0}
+        working-directory: source
+        env:
+          RELEASE_EVIDENCE: ${{ github.workspace }}/release-evidence/release.json
+          RELEASE_SOURCE: ${{ needs.source-identity.outputs.source_sha }}
+          CANDIDATE_ROOT: ${{ runner.temp }}/release-candidates
+          RELEASE_STAGE: ${{ runner.temp }}/verified-release
+          RELEASE_REPORT: ${{ runner.temp }}/xdoc-cli-release-aggregate.json
+          RELEASE_FIXTURES: ${{ runner.temp }}/aggregate-fixtures
+        run: |
+          mkdir $env.RELEASE_FIXTURES
+          pnpm xdoc-cli:probe-fixtures --output-dir $env.RELEASE_FIXTURES --json
+          node tools/xdoc-cli-release.mjs --action aggregate --release-input $env.RELEASE_EVIDENCE --source-revision $env.RELEASE_SOURCE --candidate-root $env.CANDIDATE_ROOT --fixtures $env.RELEASE_FIXTURES --default-license (pwd | path join s8fy LICENSE) --stage-dir $env.RELEASE_STAGE --report $env.RELEASE_REPORT --require-paid
+      - name: Archive the verified frozen packages
+        shell: nu {0}
+        working-directory: source
+        env:
+          RELEASE_STAGE: ${{ runner.temp }}/verified-release
+        run: |
+          mkdir release-archives
+          for target in [linux-x64 linux-arm64 macos-arm64 windows-x64] {
+            let package = ($env.RELEASE_STAGE | path join $target package | path expand --strict)
+            let extension = if $target == windows-x64 { 'zip' } else { 'tar.gz' }
+            let archive = (pwd | path join release-archives $'xdoc-($target).($extension)')
+            if $target == windows-x64 {
+              cd $package
+              ^7z a $archive *
+            } else { ^tar -czf $archive -C $package . }
+            if $env.LAST_EXIT_CODE != 0 { error make {msg: 'Verified package archive failed'} }
+          }
+      - name: Upload linux-x64 archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: xdoc-linux-x64.tar.gz
+          path: source/release-archives/xdoc-linux-x64.tar.gz
+          if-no-files-found: error
+      - name: Upload linux-arm64 archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: xdoc-linux-arm64.tar.gz
+          path: source/release-archives/xdoc-linux-arm64.tar.gz
+          if-no-files-found: error
+      - name: Upload macos-arm64 archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: xdoc-macos-arm64.tar.gz
+          path: source/release-archives/xdoc-macos-arm64.tar.gz
+          if-no-files-found: error
+      - name: Upload windows-x64 archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: xdoc-windows-x64.zip
+          path: source/release-archives/xdoc-windows-x64.zip
+          if-no-files-found: error
+      - name: Archive minimal release aggregation evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: xdoc-cli-release-evidence
+          path: |-
+            ${{ runner.temp }}/xdoc-cli-release-aggregate.json
+            ${{ runner.temp }}/verified-release/*/gate.json
+            ${{ runner.temp }}/verified-release/*/free.json
+            ${{ runner.temp }}/verified-release/*/paid.json
+          if-no-files-found: error
+          retention-days: 90
