@@ -1,5 +1,21 @@
 name: Release Bin
 
+# Clear known startup injection before setup actions or release helpers start
+# Node. Candidate isolation itself is enforced by the shared bounded runner.
+env:
+  NODE_OPTIONS: ''
+  NODE_PATH: ''
+  NODE_V8_COVERAGE: ''
+  LD_PRELOAD: ''
+  LD_LIBRARY_PATH: ''
+  DYLD_INSERT_LIBRARIES: ''
+  DYLD_LIBRARY_PATH: ''
+  DYLD_FRAMEWORK_PATH: ''
+  DYLD_FALLBACK_LIBRARY_PATH: ''
+  DYLD_FALLBACK_FRAMEWORK_PATH: ''
+  GCONV_PATH: ''
+  LOCPATH: ''
+
 on:
   workflow_dispatch:
     inputs:
@@ -13,6 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       source_sha: ${{ steps.identity.outputs.source_sha }}
+      toolchain: ${{ steps.toolchain.outputs.versions }}
 
     steps:
       - name: Checkout release source
@@ -20,13 +37,31 @@ jobs:
         with:
           path: source
           token: ${{ secrets.ACCESS_TOKEN }}
-          ref: ${{ github.event.inputs.tag }}
           repository: ${{ secrets.SOURCE_REPO }}
+          ref: ${{ github.event.inputs.tag }}
+
+      - name: Read controlled toolchain versions
+        id: toolchain
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('node:fs');
+            core.setOutput('versions', JSON.parse(fs.readFileSync('source/tools/xdoc-cli-toolchain.json', 'utf8')));
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ fromJSON(steps.toolchain.outputs.versions).node }}
 
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
-          version: '*'
+          version: ${{ fromJSON(steps.toolchain.outputs.versions).nushell }}
+
+      - name: Validate release execution tools
+        shell: nu {0}
+        working-directory: source
+        run: nu --no-config-file tools/xdoc-cli-toolchain.nu --probe
 
       - name: Resolve and validate source identity
         id: identity
@@ -42,6 +77,23 @@ jobs:
               --report $env.RELEASE_IDENTITY_PATH
               --github-output $env.GITHUB_OUTPUT)
 
+      - name: Materialize approved public CLI trust manifest
+        shell: nu {0}
+        working-directory: source
+        env:
+          XDOC_CLI_TRUST_MANIFEST_B64: ${{ secrets.XDOC_CLI_TRUST_MANIFEST_B64 }}
+          XDOC_CLI_TRUST_MANIFEST_PATH: ${{ runner.temp }}/xdoc-cli-trust-manifest.json
+        run: |
+          let encoded = ($env.XDOC_CLI_TRUST_MANIFEST_B64? | default '' | str trim)
+          if $encoded == '' {
+            error make {msg: 'XDOC_CLI_TRUST_MANIFEST_B64 is required for public CLI releases'}
+          }
+          $encoded | decode base64 | save --force $env.XDOC_CLI_TRUST_MANIFEST_PATH
+          (nu tools/build-production-xdoc-cli.nu
+              --manifest $env.XDOC_CLI_TRUST_MANIFEST_PATH
+              --check
+              --json)
+
       - name: Upload release source identity
         uses: actions/upload-artifact@v7
         with:
@@ -50,8 +102,16 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Upload approved public CLI trust manifest
+        uses: actions/upload-artifact@v7
+        with:
+          name: xdoc-cli-trust-manifest
+          path: ${{ runner.temp }}/xdoc-cli-trust-manifest.json
+          if-no-files-found: error
+          retention-days: 1
+
   build:
-    name: Build Bin (${{ matrix.os }})
+    name: Build xdoc (${{ matrix.os }})
     needs: source-identity
     runs-on: ${{ matrix.os }}
     env:
@@ -78,25 +138,30 @@ jobs:
       - name: Configure Git line endings
         run: git config --global core.autocrlf false
 
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v7
         with:
           path: source
           token: ${{ secrets.ACCESS_TOKEN }}
-          ref: ${{ needs.source-identity.outputs.source_sha }}
           repository: ${{ secrets.SOURCE_REPO }}
-
-      - name: Checkout Crescent
-        uses: actions/checkout@v7
-        with:
-          ref: feature/patch
-          path: refs/crescent
-          repository: hustcer/crescent
+          ref: ${{ needs.source-identity.outputs.source_sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version: ${{ fromJSON(needs.source-identity.outputs.toolchain).node }}
+
+      - name: Checkout controlled Crescent source
+        uses: actions/checkout@v7
+        with:
+          path: refs/crescent
+          repository: ${{ fromJSON(needs.source-identity.outputs.toolchain).nativeSources.crescent.repository }}
+          ref: ${{ fromJSON(needs.source-identity.outputs.toolchain).nativeSources.crescent.revision }}
+
+      - name: Setup pnpm
+        uses: pnpm/setup@v2
+        with:
+          version: ${{ fromJSON(needs.source-identity.outputs.toolchain).pnpm }}
 
       - name: Setup MSVC (Windows)
         if: runner.os == 'Windows'
@@ -106,6 +171,9 @@ jobs:
 
       - name: Setup MoonBit
         uses: hustcer/setup-moonbit@v1
+        with:
+          version: ${{ fromJSON(needs.source-identity.outputs.toolchain).moonbit.distribution }}
+          core-version: ${{ fromJSON(needs.source-identity.outputs.toolchain).moonbit.core }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -114,43 +182,82 @@ jobs:
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
-          version: '*'
+          version: ${{ fromJSON(needs.source-identity.outputs.toolchain).nushell }}
+
+      - name: Validate exact release toolchain
+        shell: nu {0}
+        working-directory: source
+        run: |
+          nu --no-config-file tools/xdoc-cli-toolchain.nu
+          pnpm install --frozen-lockfile
 
       - name: Configure macOS deployment target
         if: runner.os == 'macOS'
         shell: nu {0}
         run: "'MACOSX_DEPLOYMENT_TARGET=13.0' | save --append $env.GITHUB_ENV"
 
-      - name: Build Bin
+      - name: Download approved public CLI trust manifest
+        uses: actions/download-artifact@v8
+        with:
+          name: xdoc-cli-trust-manifest
+          path: ${{ runner.temp }}/xdoc-cli-trust
+
+      - name: Build and gate public xdoc CLI
         shell: nu {0}
         working-directory: source
+        env:
+          XDOC_CLI_PACKAGE_DIR: ${{ runner.temp }}/xdoc-cli-package
+          XDOC_CLI_RELEASE_REPORT: ${{ runner.temp }}/xdoc-cli-release-check.json
+          XDOC_CLI_TRUST_MANIFEST: ${{ runner.temp }}/xdoc-cli-trust/xdoc-cli-trust-manifest.json
+          XDOC_RELEASE_SOURCE_SHA: ${{ needs.source-identity.outputs.source_sha }}
         run: |
-          $env.XDOC_RELEASE_LINK_OPTIMIZE = '1'
           moon update
-          moon -C s8fy build cmd/main --release --strip
-          print '✅ xdoc build succeeded'
+          (pnpm xdoc-cli:build-production
+              --manifest $env.XDOC_CLI_TRUST_MANIFEST
+              --output-dir $env.XDOC_CLI_PACKAGE_DIR
+              --json)
+          (pnpm xdoc-cli:release-check
+              --manifest $env.XDOC_CLI_TRUST_MANIFEST
+              --package-dir $env.XDOC_CLI_PACKAGE_DIR
+              --source-revision $env.XDOC_RELEASE_SOURCE_SHA
+              --report $env.XDOC_CLI_RELEASE_REPORT
+              --json)
+          print 'Public xdoc CLI build and release gate succeeded'
 
       - name: Prepare artifact
         shell: nu {0}
         working-directory: source
+        env:
+          XDOC_CLI_PACKAGE_DIR: ${{ runner.temp }}/xdoc-cli-package
+          XDOC_CLI_RELEASE_REPORT: ${{ runner.temp }}/xdoc-cli-release-check.json
         run: |
           let ext = '${{ matrix.ext }}'
           let target = '${{ matrix.target }}'
           let archive = $'xdoc-($target).($ext)'
+          let archive_path = (pwd | path join $archive)
           let bin_name = if $nu.os-info.name == 'windows' { 'xdoc.exe' } else { 'xdoc' }
-          let pdfium_lib_dir = (pwd | path join 'native' 'pdfium' 'lib')
-          mkdir pkg
-          cp _build/native/release/build/xdoc/cmd/main/main.exe $'pkg/($bin_name)'
-          cp s8fy/LICENSE pkg/LICENSE
-          nu tools/relocate-xdoc-pdfium.nu $'pkg/($bin_name)' $pdfium_lib_dir
-          nu tools/optimize-xdoc-native.nu $'pkg/($bin_name)'
-          nu tools/verify-xdoc-static.nu $'pkg/($bin_name)' test-fixtures/agent-pptx/inspect-smoke.pptx
-          if $ext == 'zip' {
-            cd pkg; ^7z a $'../($archive)' *
-          } else {
-            tar -czf $archive -C pkg .
+          let binary = ($env.XDOC_CLI_PACKAGE_DIR | path join $bin_name | path expand --strict)
+          let gate = (open $env.XDOC_CLI_RELEASE_REPORT)
+          if $gate.schemaVersion? != 'xdoc-cli-release-check/v1' or $gate.status? != 'passed' {
+            error make {msg: 'Public xdoc CLI release report is missing or invalid'}
           }
-          print $'✅ Archive ready: ($archive)'
+          if $gate.binary? != ($binary | into string) {
+            error make {msg: 'Public xdoc CLI release report names a different binary'}
+          }
+          if (open --raw $binary | hash sha256) != $gate.artifactScan?.artifactSha256? {
+            error make {msg: 'Public xdoc CLI changed after the release gate'}
+          }
+          let evidence = ($env.XDOC_CLI_PACKAGE_DIR | path join xdoc-cli-build-evidence.json)
+          if (open --raw $evidence | hash sha256) != $gate.buildEvidenceSha256? {
+            error make {msg: 'Public xdoc CLI build evidence changed after the release gate'}
+          }
+          if $ext == 'zip' {
+            cd $env.XDOC_CLI_PACKAGE_DIR
+            ^7z a $archive_path *
+          } else {
+            tar -czf $archive_path -C $env.XDOC_CLI_PACKAGE_DIR .
+          }
+          print $'Archive ready: ($archive)'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -164,13 +271,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v7
         with:
           path: source
           token: ${{ secrets.ACCESS_TOKEN }}
-          ref: ${{ needs.source-identity.outputs.source_sha }}
           repository: ${{ secrets.SOURCE_REPO }}
+          ref: ${{ needs.source-identity.outputs.source_sha }}
 
       - name: Download release source identity
         uses: actions/download-artifact@v8
@@ -186,6 +293,8 @@ jobs:
             source/tools/pdfium-link-checks.nu
             source/tools/verify-macos-deployment-target.nu
             source/tools/verify-xdoc-static.nu
+            source/tools/xdoc-cli-toolchain.nu
+            source/tools/xdoc-cli-toolchain.json
             source/test-fixtures/agent-pptx/inspect-smoke.pptx
             source/release-source-identity.json
           if-no-files-found: error

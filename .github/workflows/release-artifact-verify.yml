@@ -1,5 +1,21 @@
 name: Verify xdoc release artifacts
 
+# Job bootstrap actions run before repository helpers. Clear startup injection
+# here too because this reusable workflow also has a standalone dispatch entry.
+env:
+  NODE_OPTIONS: ''
+  NODE_PATH: ''
+  NODE_V8_COVERAGE: ''
+  LD_PRELOAD: ''
+  LD_LIBRARY_PATH: ''
+  DYLD_INSERT_LIBRARIES: ''
+  DYLD_LIBRARY_PATH: ''
+  DYLD_FRAMEWORK_PATH: ''
+  DYLD_FALLBACK_LIBRARY_PATH: ''
+  DYLD_FALLBACK_FRAMEWORK_PATH: ''
+  GCONV_PATH: ''
+  LOCPATH: ''
+
 on:
   workflow_call:
     inputs:
@@ -41,11 +57,6 @@ jobs:
             ext: zip
 
     steps:
-      - name: Setup Nushell
-        uses: hustcer/setup-nu@v3
-        with:
-          version: '*'
-
       - name: Setup MSVC dependency tools
         if: runner.os == 'Windows'
         uses: TheMrMilchmann/setup-msvc-dev@v4
@@ -70,6 +81,33 @@ jobs:
           run-id: ${{ inputs.run_id || github.run_id }}
           github-token: ${{ github.token }}
 
+      - name: Read controlled verifier toolchain
+        id: toolchain
+        uses: actions/github-script@v8
+        env:
+          RELEASE_VERIFIER_DIR: ${{ runner.temp }}/release-verifier
+        with:
+          script: |
+            const fs = require('node:fs');
+            const path = require('node:path');
+            core.setOutput('versions', JSON.parse(fs.readFileSync(path.join(process.env.RELEASE_VERIFIER_DIR, 'tools/xdoc-cli-toolchain.json'), 'utf8')));
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ fromJSON(steps.toolchain.outputs.versions).node }}
+
+      - name: Setup Nushell
+        uses: hustcer/setup-nu@v3
+        with:
+          version: ${{ fromJSON(steps.toolchain.outputs.versions).nushell }}
+
+      - name: Validate verifier execution tools
+        shell: nu {0}
+        env:
+          RELEASE_VERIFIER_DIR: ${{ runner.temp }}/release-verifier
+        run: nu --no-config-file ($env.RELEASE_VERIFIER_DIR | path join tools xdoc-cli-toolchain.nu) --probe
+
       - name: Verify packaged CLI
         shell: nu {0}
         env:
@@ -84,11 +122,60 @@ jobs:
           WORKFLOW_REPOSITORY: ${{ github.repository }}
           WORKFLOW_SHA: ${{ github.sha }}
         run: |
+          mkdir $env.RELEASE_EVIDENCE_DIR
+          let report = ($env.RELEASE_EVIDENCE_DIR | path join 'verification.json')
           let archive = (
             $env.RELEASE_ARTIFACT_DIR
             | path join $env.ARCHIVE_NAME
-            | path expand --strict
           )
+          let binary_name = if $nu.os-info.name == 'windows' { 'xdoc.exe' } else { 'xdoc' }
+          let binary = ($env.RELEASE_INSTALL_DIR | path join $binary_name)
+          let verifier = ($env.RELEASE_VERIFIER_DIR | path join 'tools' 'verify-xdoc-static.nu')
+          let fixture = (
+            $env.RELEASE_VERIFIER_DIR
+            | path join 'test-fixtures' 'agent-pptx' 'inspect-smoke.pptx'
+          )
+          let source_identity = (
+            $env.RELEASE_VERIFIER_DIR
+            | path join 'release-source-identity.json'
+          )
+          let file_evidence = {|path|
+            if ($path | path exists) {
+              {
+                name: ($path | path basename)
+                sizeBytes: (ls $path | get size.0 | into int)
+                sha256: (open --raw $path | hash sha256)
+              }
+            } else {
+              null
+            }
+          }
+          let write_failure = {|failed_check, message, help|
+            {
+              schemaVersion: 'xdoc-static-release-verification/v2'
+              status: 'failed'
+              target: $env.RELEASE_TARGET
+              platform: {os: $nu.os-info.name, arch: $nu.os-info.arch}
+              source: null
+              workflow: {
+                repository: $env.WORKFLOW_REPOSITORY
+                ref: $env.WORKFLOW_REF
+                sha: $env.WORKFLOW_SHA
+              }
+              archive: (do $file_evidence $archive)
+              binary: (do $file_evidence $binary)
+              fixture: (do $file_evidence $fixture)
+              checks: []
+              failedCheck: $failed_check
+              error: {message: $message, help: $help}
+            } | to json --indent 2 | save --force $report
+          }
+
+          if not ($archive | path exists) {
+            let message = $'Missing release archive: ($archive)'
+            do $write_failure 'verification-inputs' $message ''
+            error make {msg: $message}
+          }
           mkdir $env.RELEASE_INSTALL_DIR
           let extract_result = if $env.ARCHIVE_EXT == 'zip' {
             run-external '7z' 'x' $archive $'-o($env.RELEASE_INSTALL_DIR)' '-y' | complete
@@ -96,35 +183,25 @@ jobs:
             run-external 'tar' '-xzf' $archive '-C' $env.RELEASE_INSTALL_DIR | complete
           }
           if $extract_result.exit_code != 0 {
+            do $write_failure 'archive-extract' $'Failed to extract release archive: ($env.ARCHIVE_NAME)' ($extract_result.stderr | str trim)
             error make {
               msg: $'Failed to extract release archive: ($env.ARCHIVE_NAME)'
               help: ($extract_result.stderr | str trim)
             }
           }
 
-          let binary_name = if $nu.os-info.name == 'windows' { 'xdoc.exe' } else { 'xdoc' }
-          let binary = (
-            $env.RELEASE_INSTALL_DIR
-            | path join $binary_name
-            | path expand --strict
-          )
-          let verifier = (
-            $env.RELEASE_VERIFIER_DIR
-            | path join 'tools' 'verify-xdoc-static.nu'
-            | path expand --strict
-          )
-          let fixture = (
-            $env.RELEASE_VERIFIER_DIR
-            | path join 'test-fixtures' 'agent-pptx' 'inspect-smoke.pptx'
-            | path expand --strict
-          )
-          let source_identity = (
-            $env.RELEASE_VERIFIER_DIR
-            | path join 'release-source-identity.json'
-            | path expand --strict
-          )
-          mkdir $env.RELEASE_EVIDENCE_DIR
-          let report = ($env.RELEASE_EVIDENCE_DIR | path join 'verification.json')
+          for required in [
+            {path: $binary, label: 'packaged xdoc binary'}
+            {path: $verifier, label: 'release verifier'}
+            {path: $fixture, label: 'PPTX verification fixture'}
+            {path: $source_identity, label: 'release source identity'}
+          ] {
+            if not ($required.path | path exists) {
+              let message = $'Missing ($required.label): ($required.path)'
+              do $write_failure 'verification-inputs' $message ''
+              error make {msg: $message}
+            }
+          }
           let verify_result = (
             run-external 'nu'
               $verifier
@@ -150,6 +227,9 @@ jobs:
             print ($verify_result.stdout | str trim)
           }
           if $verify_result.exit_code != 0 {
+            if not ($report | path exists) {
+              do $write_failure 'verifier-process' $'Release artifact verification failed: ($env.RELEASE_TARGET)' ($verify_result.stderr | str trim)
+            }
             error make {
               msg: $'Release artifact verification failed: ($env.RELEASE_TARGET)'
               help: ($verify_result.stderr | str trim)
@@ -158,6 +238,7 @@ jobs:
 
       - name: Upload verification evidence
         id: evidence
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: release-verification-${{ matrix.target }}
@@ -166,6 +247,7 @@ jobs:
           retention-days: 30
 
       - name: Publish verification summary
+        if: always()
         shell: nu {0}
         env:
           EVIDENCE_ARTIFACT_URL: ${{ steps.evidence.outputs.artifact-url }}
@@ -214,6 +296,10 @@ jobs:
           let macos_sdk = ($macos.sdkVersion? | default 'not applicable' | into string)
           let checks = ($evidence.checks? | default [])
           let check_lines = ($checks | each {|check| $'- `($check)`' })
+          let failed_check = ($evidence.failedCheck? | default 'none' | into string)
+          let error = ($evidence.error? | default {})
+          let error_message = ($error.message? | default 'none' | into string)
+          let status_icon = if $status == 'verified' { '✅' } else { '❌' }
           let artifact_url = ($env.EVIDENCE_ARTIFACT_URL | str trim)
           let artifact_line = if $artifact_url == '' {
             'Raw verification JSON artifact URL is unavailable.'
@@ -223,7 +309,7 @@ jobs:
           let summary = ([
             $'## xdoc release verification: `($target)`'
             ''
-            $'**Status:** ✅ `($status)` · **Checks:** `($checks | length)` passed'
+            $'**Status:** ($status_icon) `($status)` · **Completed checks:** `($checks | length)`'
             ''
             '| Field | Evidence |'
             '| --- | --- |'
@@ -244,6 +330,8 @@ jobs:
             $'| PDFium | `($pdfium_provider)` `($pdfium_version)` · `($pdfium_link_mode)` |'
             $'| PDFium SHA-256 | `($pdfium_sha)` |'
             $'| macOS deployment | minimum `($macos_minimum)` · SDK `($macos_sdk)` |'
+            $'| Failed check | `($failed_check)` |'
+            $'| Error | ($error_message) |'
             ''
             '<details><summary>Executed checks</summary>'
             ''
@@ -257,4 +345,4 @@ jobs:
           print 'Release verification evidence:'
           print ($evidence | to json --indent 2)
           print $'Evidence artifact: ($artifact_url)'
-          $summary | save --append $env.GITHUB_STEP_SUMMARY
+          ($summary + (char nl)) | save --append $env.GITHUB_STEP_SUMMARY
