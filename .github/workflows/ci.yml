@@ -145,8 +145,8 @@ jobs:
           pnpm --filter @s8fy/pptx-viewer-svelte build
           pnpm --filter @s8fy/pptx-viewer-vue build
           moon -C s8fy build cmd/main --target native --release
-          moon -C moon-tex build . --target all --release
           moon -C pptx-gen build cmd/pptx-gen --target all --release
+          moon -C moon-tex build . --target all --release
           moon -C parser-mbt build cmd/main --target all --release
           moon -C license-policy build cmd/main --target wasm-gc --release --strip
           moon -C emf-mbt build cmd/main --target wasm-gc --release
@@ -167,11 +167,19 @@ jobs:
           }
           moon -C license-policy build cmd/main --target wasm-gc --release --strip
           pnpm -r test
+          pnpm test:sdk-production-wasm
+          pnpm test:sdk-declarations
+          pnpm test:sdk-assets
+          pnpm test:sdk-release-materials
           pnpm test:license-trust-profile
+          pnpm test:cli-trust-profile
+          pnpm test:xdoc-cli-production-build
+          pnpm test:xdoc-cli-release-check
           pnpm test:license-trust-compatibility
           pnpm test:license-release-check
           pnpm test:provenance-signer-cf-a11
           pnpm test:provenance-signer-cf-a12
+          pnpm test:provenance-signer-cf-a13
           moon -C s8fy test cmd/main cmd/server src/build_info src/local_auth src/convert src/core src/deliver src/pdf_text src/server src/support src/visual_oracle test_cases --target native
           moon -C emf-mbt test . src/binary src/parser src/svg src/transform test --target all
           moon -C moon-tex test . src/font_runtime src/glyph test --target all
@@ -179,6 +187,11 @@ jobs:
           moon -C parser-mbt test . benchmarks cmd/main src/ooxml src/shape_path src/svg src/types src/utils src/zip test --target all
           moon -C license-policy test . test cmd/main --target native,js,wasm-gc
           moon -C license-policy test native_source --target native
+          pnpm test:cli-clock-restriction
+          node --test tools/tests/native-source-reader.test.mjs
+          with-env {XDOC_BIN: (pwd | path join '_build' 'native' 'release' 'build' 'xdoc' 'cmd' 'main' 'main.exe')} {
+            node --test tools/tests/cli-license-command.test.mjs tools/tests/cli-auth-local-actions.test.mjs
+          }
           moon -C license-policy test cmd/provenance-service --target js
           moon -C resource-policy test . --target all
           moon -C image-converter test . cmd/main src/converter --target native
