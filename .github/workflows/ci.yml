@@ -126,6 +126,7 @@ jobs:
           moon -C moon-tex fmt . --check
           moon -C pptx-gen fmt . --check
           moon -C parser-mbt fmt . --check
+          moon -C ooxml-mc fmt . --check
           moon -C license-policy fmt . --check
           moon -C image-converter fmt . --check
           moon -C pdf-converter fmt . --check
@@ -194,6 +195,7 @@ jobs:
           }
           moon -C license-policy test cmd/provenance-service --target js
           moon -C resource-policy test . --target all
+          moon -C ooxml-mc test . test --target all
           moon -C image-converter test . cmd/main src/converter --target native
           moon -C pdf-converter test . chart_core cmd/main cmd/native_main font_resolver png_encode src/chart_render src/converter src/font_parse src/font_runtime src/pdf_backend src/render_capture src/render_capture/tokenizer src/render_core src/render_support src/text_render test --target native,wasm-gc
           print '✅ Tests passed'
