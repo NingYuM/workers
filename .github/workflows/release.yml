@@ -18,12 +18,17 @@ on:
       tag:
         required: true
         description: The tag to release (e.g. v0.1.0)
+      publish:
+        description: Request publication after all checks and environment approval
+        type: boolean
+        default: false
 jobs:
   source-identity:
     name: Validate release source identity
     runs-on: ubuntu-latest
     outputs:
       source_sha: ${{ steps.identity.outputs.source_sha }}
+      source_version: ${{ steps.identity.outputs.source_version }}
       toolchain: ${{ steps.toolchain.outputs.versions }}
       evidence_sha: ${{ steps.evidence.outputs.evidence_sha }}
       evidence_repository: ${{ steps.evidence.outputs.evidence_repository }}
@@ -67,22 +72,59 @@ jobs:
               --expected-repository '${{ secrets.SOURCE_REPO }}'
               --report $env.RELEASE_IDENTITY_PATH
               --github-output $env.GITHUB_OUTPUT)
-      - name: Materialize approved public CLI trust manifest
+      - name: Require immutable approved evidence checkout
+        id: evidence
+        shell: nu {0}
+        env:
+          EVIDENCE_REPOSITORY: ${{ vars.XDOC_CLI_EVIDENCE_REPOSITORY }}
+          EVIDENCE_REVISION: ${{ vars.XDOC_CLI_EVIDENCE_REVISION }}
+          EVIDENCE_TOKEN_AVAILABLE: ${{ secrets.XDOC_CLI_EVIDENCE_TOKEN != '' }}
+        run: |
+          mut missing = []
+          if not ($env.EVIDENCE_REPOSITORY =~ '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') {
+            $missing = ($missing | append 'XDOC_CLI_EVIDENCE_REPOSITORY: repository variable in owner/repo form')
+          }
+          if not ($env.EVIDENCE_REVISION =~ '^[0-9a-f]{40}$') {
+            $missing = ($missing | append 'XDOC_CLI_EVIDENCE_REVISION: repository variable containing the approved full commit SHA')
+          }
+          if $env.EVIDENCE_TOKEN_AVAILABLE != 'true' {
+            $missing = ($missing | append 'XDOC_CLI_EVIDENCE_TOKEN: repository secret with read-only access to evidence')
+          }
+          if not ($missing | is-empty) {
+            error make {msg: 'Release repository configuration is incomplete', help: ($missing | str join (char nl))}
+          }
+          [$'evidence_sha=($env.EVIDENCE_REVISION)' $'evidence_repository=($env.EVIDENCE_REPOSITORY)' ''] | str join (char nl) | save --append $env.GITHUB_OUTPUT
+      - name: Checkout approved release evidence
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ steps.evidence.outputs.evidence_repository }}
+          ref: ${{ steps.evidence.outputs.evidence_sha }}
+          token: ${{ secrets.XDOC_CLI_EVIDENCE_TOKEN }}
+          path: release-evidence
+          persist-credentials: false
+      - name: Preflight all approved release inputs
         shell: nu {0}
         working-directory: source
         env:
-          XDOC_CLI_TRUST_MANIFEST_B64: ${{ secrets.XDOC_CLI_TRUST_MANIFEST_B64 }}
-          XDOC_CLI_TRUST_MANIFEST_PATH: ${{ runner.temp }}/xdoc-cli-trust-manifest.json
+          RELEASE_EVIDENCE: ${{ github.workspace }}/release-evidence/release.json
+          RELEASE_SOURCE_SHA: ${{ steps.identity.outputs.source_sha }}
+          RELEASE_SOURCE_VERSION: ${{ steps.identity.outputs.source_version }}
+          RELEASE_PREFLIGHT_REPORT: ${{ runner.temp }}/release-input-preflight.json
         run: |
-          let encoded = ($env.XDOC_CLI_TRUST_MANIFEST_B64? | default '' | str trim)
-          if $encoded == '' {
-            error make {msg: 'XDOC_CLI_TRUST_MANIFEST_B64 is required for public CLI releases'}
+          let result = (nu --no-config-file tools/prepare-xdoc-cli-release.nu check --release-input $env.RELEASE_EVIDENCE --source-revision $env.RELEASE_SOURCE_SHA --source-version $env.RELEASE_SOURCE_VERSION --report $env.RELEASE_PREFLIGHT_REPORT --json | complete)
+          if ($env.RELEASE_PREFLIGHT_REPORT | path exists) {
+            let report = (open $env.RELEASE_PREFLIGHT_REPORT)
+            [
+              '## CLI release input preflight'
+              $'Status: ($report.status). Candidate execution: not performed.'
+              ''
+              ...($report.findings | each {|finding| $'- ($finding.field): ($finding.message)' })
+              ''
+            ] | str join (char nl) | save --append $env.GITHUB_STEP_SUMMARY
           }
-          $encoded | decode base64 | save --force $env.XDOC_CLI_TRUST_MANIFEST_PATH
-          (nu tools/build-production-xdoc-cli.nu
-              --manifest $env.XDOC_CLI_TRUST_MANIFEST_PATH
-              --check
-              --json)
+          if $result.exit_code != 0 {
+            error make {msg: 'Release inputs are incomplete or invalid; see the job summary', help: $result.stderr}
+          }
       - name: Upload release source identity
         uses: actions/upload-artifact@v7
         with:
@@ -90,25 +132,6 @@ jobs:
           path: ${{ runner.temp }}/release-source-identity.json
           if-no-files-found: error
           retention-days: 7
-      - name: Upload approved public CLI trust manifest
-        uses: actions/upload-artifact@v7
-        with:
-          name: xdoc-cli-trust-manifest
-          path: ${{ runner.temp }}/xdoc-cli-trust-manifest.json
-          if-no-files-found: error
-          retention-days: 1
-      - name: Require immutable approved evidence checkout
-        id: evidence
-        shell: nu {0}
-        env:
-          EVIDENCE_REPOSITORY: ${{ vars.XDOC_CLI_EVIDENCE_REPOSITORY }}
-          EVIDENCE_REVISION: ${{ vars.XDOC_CLI_EVIDENCE_REVISION }}
-        run: |
-          if not ($env.EVIDENCE_REVISION =~ '^[0-9a-f]{40}$') or not ($env.EVIDENCE_REPOSITORY =~ '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') {
-            error make {msg: 'Protected release requires an approved evidence repository and immutable revision'}
-          }
-          [$'evidence_sha=($env.EVIDENCE_REVISION)' $'evidence_repository=($env.EVIDENCE_REPOSITORY)' ''] | str join (char nl) | save --append $env.GITHUB_OUTPUT
-    environment: xdoc-cli-release
   build:
     name: Build xdoc (${{ matrix.os }})
     needs: source-identity
@@ -186,11 +209,6 @@ jobs:
         if: runner.os == 'macOS'
         shell: nu {0}
         run: "'MACOSX_DEPLOYMENT_TARGET=13.0' | save --append $env.GITHUB_ENV"
-      - name: Download approved public CLI trust manifest
-        uses: actions/download-artifact@v8
-        with:
-          name: xdoc-cli-trust-manifest
-          path: ${{ runner.temp }}/xdoc-cli-trust
       - name: Checkout approved release evidence
         uses: actions/checkout@v7
         with:
@@ -204,13 +222,12 @@ jobs:
         working-directory: source
         env:
           RELEASE_EVIDENCE: ${{ github.workspace }}/release-evidence/release.json
-          XDOC_CLI_TRUST_MANIFEST: ${{ runner.temp }}/xdoc-cli-trust/xdoc-cli-trust-manifest.json
           XDOC_RELEASE_SOURCE_SHA: ${{ needs.source-identity.outputs.source_sha }}
           RELEASE_TARGET: ${{ matrix.target }}
           CANDIDATE_OUTPUT: ${{ runner.temp }}/xdoc-candidate
         run: |
           moon update
-          nu --no-config-file tools/xdoc-cli-release-target.nu --release-input $env.RELEASE_EVIDENCE --source-revision $env.XDOC_RELEASE_SOURCE_SHA --target $env.RELEASE_TARGET --trust-manifest $env.XDOC_CLI_TRUST_MANIFEST --output-dir $env.CANDIDATE_OUTPUT --require-paid
+          nu --no-config-file tools/xdoc-cli-release-target.nu --release-input $env.RELEASE_EVIDENCE --source-revision $env.XDOC_RELEASE_SOURCE_SHA --target $env.RELEASE_TARGET --output-dir $env.CANDIDATE_OUTPUT --require-paid
       - name: Upload unarchived candidate and minimal reports
         uses: actions/upload-artifact@v7
         with:
@@ -222,7 +239,6 @@ jobs:
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 7
-    environment: xdoc-cli-release
   verifier-bundle:
     name: Prepare release verifier
     needs: source-identity
@@ -265,11 +281,43 @@ jobs:
     uses: ./.github/workflows/release-artifact-verify.yml
   release:
     name: Create Release
-    needs: verify
+    needs:
+      - verify
+      - source-identity
     runs-on: ubuntu-latest
+    if: inputs.publish
+    environment: xdoc-cli-release
     permissions:
+      actions: read
       contents: write
     steps:
+      - name: Require publication approval
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const environment = await github.rest.repos.getEnvironment({
+              ...context.repo, environment_name: 'xdoc-cli-release',
+            });
+            if (!environment.data.protection_rules?.some(rule => rule.type === 'required_reviewers' && rule.reviewers?.length > 0)) {
+              core.setFailed('Configure required reviewers on the xdoc-cli-release environment before publishing.');
+            }
+      - name: Require unchanged source tag
+        uses: actions/github-script@v8
+        env:
+          RELEASE_SOURCE_REPOSITORY: ${{ secrets.SOURCE_REPO }}
+          RELEASE_SOURCE_SHA: ${{ needs.source-identity.outputs.source_sha }}
+          RELEASE_SOURCE_VERSION: ${{ needs.source-identity.outputs.source_version }}
+        with:
+          github-token: ${{ secrets.ACCESS_TOKEN }}
+          script: |
+            const [owner, repo] = process.env.RELEASE_SOURCE_REPOSITORY.split('/');
+            let { data: { object } } = await github.rest.git.getRef({ owner, repo, ref: `tags/v${process.env.RELEASE_SOURCE_VERSION}` });
+            for (let depth = 0; object.type === 'tag' && depth < 8; depth++) {
+              ({ data: { object } } = await github.rest.git.getTag({ owner, repo, tag_sha: object.sha }));
+            }
+            if (object.type !== 'commit' || object.sha !== process.env.RELEASE_SOURCE_SHA) {
+              core.setFailed('The source tag no longer matches the verified release candidate.');
+            }
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
@@ -281,7 +329,8 @@ jobs:
         with:
           token: ${{ secrets.ACCESS_TOKEN }}
           repository: ${{ secrets.SOURCE_REPO }}
-          tag_name: ${{ github.event.inputs.tag }}
+          tag_name: v${{ needs.source-identity.outputs.source_version }}
+          target_commitish: ${{ needs.source-identity.outputs.source_sha }}
           generate_release_notes: true
           files: artifacts/*
       - name: Create GitHub Release for pptx-nova
@@ -289,7 +338,7 @@ jobs:
         with:
           token: ${{ secrets.ACCESS_TOKEN }}
           repository: ${{ secrets.SKILL_REPO }}
-          tag_name: ${{ github.event.inputs.tag }}
+          tag_name: v${{ needs.source-identity.outputs.source_version }}
           target_commitish: main
           generate_release_notes: true
           files: artifacts/*
@@ -298,7 +347,6 @@ jobs:
     needs:
       - source-identity
       - build
-    environment: xdoc-cli-release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
