@@ -254,14 +254,28 @@ jobs:
           export XDOC_SERVER_PORT=18080
           export XDOC_API_KEY=secret
           export XDOC_WORKDIR="${RUNNER_TEMP:-/tmp}/xdoc-smoke"
+          # Cold native compilation is not part of the service readiness budget.
+          moon -C s8fy build cmd/server --target native
           moon -C s8fy run cmd/server --target native > "${RUNNER_TEMP:-/tmp}/xdoc-server.log" 2>&1 &
           server_pid=$!
-          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          trap 'kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true' EXIT
+          ready=false
           for _ in {1..60}; do
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              cat "${RUNNER_TEMP:-/tmp}/xdoc-server.log" >&2
+              echo "Server exited before readiness" >&2
+              exit 1
+            fi
             if curl -fsS "http://127.0.0.1:18080/healthz" >/dev/null 2>&1; then
+              ready=true
               break
             fi
             sleep 1
           done
+          if [[ "$ready" != true ]]; then
+            cat "${RUNNER_TEMP:-/tmp}/xdoc-server.log" >&2
+            echo "Server readiness timed out after 60 seconds" >&2
+            exit 1
+          fi
           XDOC_BASE_URL=http://127.0.0.1:18080 scripts/server-smoke.sh
           echo "✅ Server smoke test passed"
