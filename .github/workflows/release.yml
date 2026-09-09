@@ -19,7 +19,7 @@ on:
         required: true
         description: The tag to release (e.g. v0.1.0)
       publish:
-        description: Request publication after all checks and environment approval
+        description: Use true for a single build followed by final publication approval; false validates only
         type: boolean
         default: false
 jobs:
@@ -117,6 +117,7 @@ jobs:
             [
               '## CLI release input preflight'
               $'Status: ($report.status). Candidate execution: not performed.'
+              $'Natural expiry policy: ($report.naturalExpiry? | default "not-evaluated").'
               ''
               ...($report.findings | each {|finding| $'- ($finding.field): ($finding.message)' })
               ''
