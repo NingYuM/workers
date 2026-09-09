@@ -50,11 +50,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ fromJSON(steps.toolchain.outputs.versions).node }}
+          node-version: '>=${{ fromJSON(steps.toolchain.outputs.versions).node }}'
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
-          version: ${{ fromJSON(steps.toolchain.outputs.versions).nushell }}
+          version: '>=${{ fromJSON(steps.toolchain.outputs.versions).nushell }}'
       - name: Validate release execution tools
         shell: nu {0}
         working-directory: source
@@ -168,7 +168,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ fromJSON(needs.source-identity.outputs.toolchain).node }}
+          node-version: '>=${{ fromJSON(needs.source-identity.outputs.toolchain).node }}'
       - name: Checkout controlled Crescent source
         uses: actions/checkout@v7
         with:
@@ -182,7 +182,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/setup@v2
         with:
-          version: ${{ fromJSON(needs.source-identity.outputs.toolchain).pnpm }}
+          version: '>=${{ fromJSON(needs.source-identity.outputs.toolchain).pnpm }}'
       - name: Setup MSVC (Windows)
         if: runner.os == 'Windows'
         uses: TheMrMilchmann/setup-msvc-dev@v4
@@ -198,8 +198,8 @@ jobs:
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
-          version: ${{ fromJSON(needs.source-identity.outputs.toolchain).nushell }}
-      - name: Validate exact release toolchain
+          version: '>=${{ fromJSON(needs.source-identity.outputs.toolchain).nushell }}'
+      - name: Validate release toolchain requirements
         shell: nu {0}
         working-directory: source
         run: |
@@ -367,15 +367,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ fromJSON(needs.source-identity.outputs.toolchain).node }}
+          node-version: '>=${{ fromJSON(needs.source-identity.outputs.toolchain).node }}'
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
-          version: ${{ fromJSON(needs.source-identity.outputs.toolchain).nushell }}
+          version: '>=${{ fromJSON(needs.source-identity.outputs.toolchain).nushell }}'
       - name: Setup pnpm
         uses: pnpm/setup@v2
         with:
-          version: ${{ fromJSON(needs.source-identity.outputs.toolchain).pnpm }}
+          version: '>=${{ fromJSON(needs.source-identity.outputs.toolchain).pnpm }}'
       - name: Install verifier dependencies
         working-directory: source
         run: pnpm install --frozen-lockfile

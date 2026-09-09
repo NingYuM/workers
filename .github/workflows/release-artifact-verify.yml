@@ -95,12 +95,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ fromJSON(steps.toolchain.outputs.versions).node }}
+          node-version: '>=${{ fromJSON(steps.toolchain.outputs.versions).node }}'
 
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
-          version: ${{ fromJSON(steps.toolchain.outputs.versions).nushell }}
+          version: '>=${{ fromJSON(steps.toolchain.outputs.versions).nushell }}'
 
       - name: Validate verifier execution tools
         shell: nu {0}
