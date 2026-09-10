@@ -225,6 +225,17 @@ jobs:
           token: ${{ secrets.XDOC_CLI_EVIDENCE_TOKEN }}
           path: release-evidence
           persist-credentials: false
+      - name: Checkout pinned release probe tools
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ secrets.SOURCE_REPO }}
+          token: ${{ secrets.ACCESS_TOKEN }}
+          ref: 3a669795d9b5bbe48a8d5ede4b3c3398b74e925d
+          path: release-tools
+          persist-credentials: false
+      - name: Install locked release probe dependencies
+        working-directory: release-tools
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Build and gate public xdoc CLI
         shell: nu {0}
         working-directory: source
@@ -233,12 +244,9 @@ jobs:
           XDOC_RELEASE_SOURCE_SHA: ${{ needs.source-identity.outputs.source_sha }}
           RELEASE_TARGET: ${{ matrix.target }}
           CANDIDATE_OUTPUT: ${{ runner.temp }}/xdoc-candidate
-          # pnpm 12.4 JSON-quotes Windows arguments for cmd; use its POSIX
-          # emulator to preserve canonical paths passed to the release gates.
-          PNPM_CONFIG_SHELL_EMULATOR: ${{ runner.os == 'Windows' && 'true' || 'false' }}
         run: |
           moon update
-          nu --no-config-file tools/xdoc-cli-release-target.nu --release-input $env.RELEASE_EVIDENCE --source-revision $env.XDOC_RELEASE_SOURCE_SHA --target $env.RELEASE_TARGET --output-dir $env.CANDIDATE_OUTPUT --require-paid
+          nu --no-config-file ../release-tools/tools/xdoc-cli-release-target.nu --source-root (pwd) --release-input $env.RELEASE_EVIDENCE --source-revision $env.XDOC_RELEASE_SOURCE_SHA --target $env.RELEASE_TARGET --output-dir $env.CANDIDATE_OUTPUT --require-paid
       - name: Upload unarchived candidate and minimal reports
         uses: actions/upload-artifact@v7
         with:
