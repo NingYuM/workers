@@ -53,6 +53,7 @@ try {
   const path = statusBody.source?.path ?? ''
   const installedPath = join(config, 'xdoc-license.json')
   console.log(JSON.stringify({ stage: 'status-source', kindMatches: statusBody.source?.kind === 'config-path', pathMatches: path === installedPath, digestMatches: statusBody.source?.sha256 === expected.licenseSha256, normalizedMatches: win32.normalize(path) === installedPath, namespacedMatches: path === win32.toNamespacedPath(installedPath), caseMatches: path.toLowerCase() === installedPath.toLowerCase(), fieldCount: Object.keys(statusBody.source ?? {}).length }))
+  console.log(JSON.stringify({ stage: 'status-native-path', namespacedCaseMatches: path.toLowerCase() === win32.toNamespacedPath(installedPath).toLowerCase(), nativeMatches: path === realpathSync.native(installedPath), nativeNamespaceMatches: path === win32.toNamespacedPath(realpathSync.native(installedPath)), readbackMatches: realpathSync.native(path) === realpathSync.native(installedPath) }))
   inspectPaidStatus(status, { ...expected, previousAnchor: installed.lastSeenUnixMs })
   console.log(JSON.stringify({ stage: 'auth-complete', passed: true }))
 } catch (error) {
