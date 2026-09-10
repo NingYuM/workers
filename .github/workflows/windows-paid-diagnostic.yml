@@ -1,0 +1,36 @@
+name: Diagnose Windows paid auth
+on:
+  workflow_dispatch:
+jobs:
+  diagnose:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: workflow
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ secrets.SOURCE_REPO }}
+          token: ${{ secrets.ACCESS_TOKEN }}
+          ref: d9fa2cc8e37dfe4f251331d5c9b78a4627258b49
+          path: source
+          persist-credentials: false
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ vars.XDOC_CLI_EVIDENCE_REPOSITORY }}
+          token: ${{ secrets.XDOC_CLI_EVIDENCE_TOKEN }}
+          ref: 3ee4e6edee5b59c2b9f73d48967b8b94ce421fe1
+          path: evidence
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          repository: ${{ secrets.SOURCE_REPO }}
+          github-token: ${{ secrets.ACCESS_TOKEN }}
+          run-id: 34426006858
+          name: native-facts-windows-x64-1
+          path: observation
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Inspect bounded auth behavior with redacted assertions
+        run: node workflow/.github/scripts/windows-paid-diagnostic.mjs source observation evidence
