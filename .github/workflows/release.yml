@@ -450,7 +450,7 @@ jobs:
           mkdir $env.RELEASE_FIXTURES
           nu --no-config-file ../release-tools/tools/xdoc-cli-probe-fixtures.nu --output-dir $env.RELEASE_FIXTURES --json
           if $env.LAST_EXIT_CODE != 0 { error make {msg: 'Release fixture generation failed'} }
-          node ../release-tools/tools/xdoc-cli-release.mjs --action aggregate --release-input $env.RELEASE_EVIDENCE --source-revision $env.RELEASE_SOURCE --candidate-root $env.CANDIDATE_ROOT --fixtures $env.RELEASE_FIXTURES --default-license (pwd | path join s8fy LICENSE) --stage-dir $env.RELEASE_STAGE --report $env.RELEASE_REPORT --require-paid
+          node ../release-tools/tools/xdoc-cli-release.mjs --action aggregate --source-root (pwd | into string) --release-input $env.RELEASE_EVIDENCE --source-revision $env.RELEASE_SOURCE --candidate-root $env.CANDIDATE_ROOT --fixtures $env.RELEASE_FIXTURES --default-license (pwd | path join s8fy LICENSE) --stage-dir $env.RELEASE_STAGE --report $env.RELEASE_REPORT --require-paid
           if $env.LAST_EXIT_CODE != 0 { error make {msg: 'Four-target release aggregation failed'} }
           nu --no-config-file ../release-tools/tools/xdoc-cli-checkouts.nu $tools (pwd | into string) $env.RELEASE_SOURCE $env.RELEASE_VERIFIER
           if $env.LAST_EXIT_CODE != 0 { error make {msg: 'Release checkout verification failed'} }
