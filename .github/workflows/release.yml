@@ -102,6 +102,13 @@ jobs:
           token: ${{ secrets.XDOC_CLI_EVIDENCE_TOKEN }}
           path: release-evidence
           persist-credentials: false
+      - name: Setup pnpm for release preflight
+        uses: pnpm/setup@v2
+        with:
+          version: '>=${{ fromJSON(steps.toolchain.outputs.versions).pnpm }}'
+      - name: Install release preflight dependencies
+        working-directory: source
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Preflight all approved release inputs
         shell: nu {0}
         working-directory: source
