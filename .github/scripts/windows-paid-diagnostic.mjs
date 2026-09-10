@@ -25,6 +25,8 @@ try {
   stage = 'install-command'
   const install = runProbeCandidate({ binary, cwd: work, config, args: ['auth', 'install', license] })
   const body = JSON.parse(install.stdout)
+  const reasons = ['cli_license_clock_unavailable', 'cli_license_clock_invalid', 'cli_license_expired', 'cli_license_not_yet_valid', 'cli_license_invalid', 'local_auth_config_path_invalid', 'local_auth_storage_unavailable', 'local_auth_install_failed', 'cli_license_read_failed']
+  console.log(JSON.stringify({ stage: 'install-reason', knownReason: reasons.find((reason) => reason === body.reason) ?? 'other' }))
   console.log(JSON.stringify({ stage, exitCode: install.exitCode, success: body.status === 'success', installed: body.outcome === 'installed', configMatches: body.configDirectory === config, pathMatches: body.installedPath === join(config, 'xdoc-license.json'), digestMatches: body.installedSha256 === expected.licenseSha256, reasonIsStorageUnavailable: body.reason === 'local_auth_storage_unavailable' }))
   stage = 'install-inspection'
   const installed = inspectPaidInstall(install, expected)
