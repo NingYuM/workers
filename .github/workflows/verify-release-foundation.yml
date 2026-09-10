@@ -59,6 +59,8 @@ jobs:
           version: '0.115.0'
       - uses: TheMrMilchmann/setup-msvc-dev@v4
         if: runner.os == 'Windows'
+        with:
+          arch: x64
       - name: Rebuild core inputs and collect host facts
         shell: nu {0}
         run: nu --no-config-file tools/collect-xdoc-foundation-facts.nu --facts-dir (pwd | path join retained/native-facts) --output (pwd | path join foundation.json)
