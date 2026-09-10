@@ -22,6 +22,31 @@ assert equal (normalize-release-tag 'v0.3.10') {tag: 'v0.3.10', version: '0.3.10
 assert error {|| normalize-release-tag 'not-a-version' }
 
 assert equal (validate-archive-entry './xdoc' 'xdoc') 'xdoc'
+for binary_name in ['xdoc', 'xdoc.exe'] {
+  for name in [
+    'xdoc-cli-package-evidence.json'
+    'xdoc-cli-build-evidence.json'
+    'xdoc-cli-native-link-evidence.json'
+    'xdoc-cli.cdx.json'
+    'EVALUATION-LICENSE.md'
+    'THIRD-PARTY-NOTICES'
+  ] {
+    assert equal (validate-archive-entry $name $binary_name) $name
+    assert equal (validate-archive-entry $'./($name)' $binary_name) $name
+    assert error {|| validate-archive-entry $'../($name)' $binary_name }
+    assert error {|| validate-archive-entry $'nested/($name)' $binary_name }
+    assert error {|| validate-archive-entry $'($name)/extra' $binary_name }
+  }
+  for entry in [
+    '../xdoc-cli-package-evidence.json'
+    '/xdoc-cli-package-evidence.json'
+    'nested/xdoc-cli-package-evidence.json'
+    'xdoc-cli-package-evidence.json/extra'
+    'unexpected.json'
+  ] {
+    assert error {|| validate-archive-entry $entry $binary_name }
+  }
+}
 assert equal (validate-archive-entry 'licenses-pdfium/pdfium.txt' 'xdoc') 'licenses-pdfium/pdfium.txt'
 assert error {|| validate-archive-entry '../xdoc' 'xdoc' }
 assert error {|| validate-archive-entry '/tmp/xdoc' 'xdoc' }

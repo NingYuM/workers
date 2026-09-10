@@ -266,6 +266,14 @@ export def validate-archive-entry [entry: string, binary_name: string]: nothing 
   let allowed = (
     $normalized == $binary_name
     or $normalized == 'LICENSE'
+    or $normalized in [
+      'xdoc-cli-package-evidence.json'
+      'xdoc-cli-build-evidence.json'
+      'xdoc-cli-native-link-evidence.json'
+      'xdoc-cli.cdx.json'
+      'EVALUATION-LICENSE.md'
+      'THIRD-PARTY-NOTICES'
+    ]
     or $normalized == 'licenses-pdfium'
     or ($normalized | str starts-with 'licenses-pdfium/')
   )
