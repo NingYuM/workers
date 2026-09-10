@@ -233,6 +233,9 @@ jobs:
           XDOC_RELEASE_SOURCE_SHA: ${{ needs.source-identity.outputs.source_sha }}
           RELEASE_TARGET: ${{ matrix.target }}
           CANDIDATE_OUTPUT: ${{ runner.temp }}/xdoc-candidate
+          # pnpm 12.4 JSON-quotes Windows arguments for cmd; use its POSIX
+          # emulator to preserve canonical paths passed to the release gates.
+          PNPM_CONFIG_SHELL_EMULATOR: ${{ runner.os == 'Windows' && 'true' || 'false' }}
         run: |
           moon update
           nu --no-config-file tools/xdoc-cli-release-target.nu --release-input $env.RELEASE_EVIDENCE --source-revision $env.XDOC_RELEASE_SOURCE_SHA --target $env.RELEASE_TARGET --output-dir $env.CANDIDATE_OUTPUT --require-paid
