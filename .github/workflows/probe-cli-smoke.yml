@@ -1,0 +1,46 @@
+name: Probe CLI argument smoke
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Source tag whose installed CLI entry points are tested
+        default: v0.3.12
+        required: true
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ secrets.SOURCE_REPO }}
+          token: ${{ secrets.ACCESS_TOKEN }}
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: hustcer/setup-nu@v3
+        with:
+          version: '0.115.1'
+      - uses: pnpm/setup@v2
+        with:
+          version: '12.4.0'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Compare direct and package-script arguments
+        shell: nu {0}
+        run: |
+          let scratch = (mktemp --directory | path expand --strict)
+          let dump = ($scratch | path join args.cjs)
+          'console.log(JSON.stringify(process.argv.slice(2)))' | save $dump
+          {scripts: {args: 'node args.cjs'}} | to json | save ($scratch | path join package.json)
+          let direct = ($scratch | path join direct)
+          let package = ($scratch | path join package)
+          let bash = ($scratch | path join bash)
+          mkdir $direct $package $bash
+          let checks = [
+            {name: direct result: (^nu --no-config-file tools/xdoc-cli-probe-fixtures.nu --output-dir $direct --json | complete)}
+            {name: pnpm result: (^pnpm xdoc-cli:probe-fixtures --output-dir $package --json | complete)}
+            {name: bash result: (^pnpm --config.script-shell='C:\Program Files\Git\bin\bash.exe' xdoc-cli:probe-fixtures --output-dir $bash --json | complete)}
+          ]
+          print ($checks | to json --indent 2)
+          cd $scratch
+          print (^pnpm args --output-dir $package --json | complete | to json --indent 2)
