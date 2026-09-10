@@ -1,0 +1,69 @@
+name: Verify reusable release foundation
+on:
+  workflow_dispatch:
+    inputs:
+      verifier_revision:
+        description: Immutable source tools commit
+        required: true
+        type: string
+      native_run_id:
+        description: Existing private native facts run, reused without compiling xdoc
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  foundation:
+    name: Foundation (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x64
+          - os: ubuntu-22.04-arm
+            target: linux-arm64
+          - os: macos-15
+            target: macos-arm64
+          - os: windows-latest
+            target: windows-x64
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ secrets.SOURCE_REPO }}
+          token: ${{ secrets.ACCESS_TOKEN }}
+          ref: ${{ inputs.verifier_revision }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ secrets.ACCESS_TOKEN }}
+          repository: ${{ secrets.SOURCE_REPO }}
+          run-id: ${{ inputs.native_run_id }}
+          name: native-facts-${{ matrix.target }}-1
+          path: retained
+      - id: observed
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('node:fs');
+            const facts = JSON.parse(fs.readFileSync('retained/native-facts/toolchain.json', 'utf8'));
+            core.setOutput('compiler', facts.versions.compiler.split(' ')[0]);
+            core.setOutput('core', facts.versions.core);
+      - uses: hustcer/setup-moonbit@v1
+        with:
+          version: ${{ steps.observed.outputs.compiler }}
+          core-version: ${{ steps.observed.outputs.core }}
+      - uses: hustcer/setup-nu@v3
+        with:
+          version: '0.115.0'
+      - uses: TheMrMilchmann/setup-msvc-dev@v4
+        if: runner.os == 'Windows'
+      - name: Rebuild core inputs and collect host facts
+        shell: nu {0}
+        run: nu --no-config-file tools/collect-xdoc-foundation-facts.nu --facts-dir (pwd | path join retained/native-facts) --output (pwd | path join foundation.json)
+      - uses: actions/upload-artifact@v7
+        with:
+          name: foundation-${{ matrix.target }}
+          path: foundation.json
+          if-no-files-found: error
