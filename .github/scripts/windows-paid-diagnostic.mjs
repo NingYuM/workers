@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url'
 
 // Diagnostic only: the independently hashed observation is not a release gate.
 // Never print candidate output, License facts, private paths or assertion diffs.
-const [sourceRoot, artifactRoot, evidenceRoot] = process.argv.slice(2).map(realpathSync)
+const [sourceRoot, artifactRoot, evidenceRoot] = process.argv.slice(2).map((path) => realpathSync(path))
 const sourceModule = (name) => import(pathToFileURL(join(sourceRoot, 'tools/lib', name)))
 const { runProbeCandidate } = await sourceModule('xdoc-cli-probe-runner.mjs')
 const { inspectPaidInstall, inspectPaidStatus, verifyStoredPaidClock } = await sourceModule('xdoc-cli-paid-probe-auth.mjs')
