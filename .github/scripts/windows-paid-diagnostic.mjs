@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
+import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -27,6 +28,20 @@ try {
   const body = JSON.parse(install.stdout)
   const reasons = ['cli_license_clock_unavailable', 'cli_license_clock_invalid', 'cli_license_expired', 'cli_license_not_yet_valid', 'cli_license_invalid', 'local_auth_config_path_invalid', 'local_auth_storage_unavailable', 'local_auth_install_failed', 'cli_license_read_failed']
   console.log(JSON.stringify({ stage: 'install-reason', knownReason: reasons.find((reason) => reason === body.reason) ?? 'other' }))
+  if (install.exitCode !== 0) {
+    stage = 'explicit-directory-owner'
+    const identity = execFileSync('whoami.exe', ['/user', '/fo', 'csv', '/nh'], { encoding: 'utf8' })
+    const sid = identity.match(/S-1-[0-9-]+/)[0]
+    execFileSync('icacls.exe', [config, '/setowner', `*${sid}`], { stdio: 'pipe' })
+    const retried = runProbeCandidate({ binary, cwd: work, config, args: ['auth', 'install', license] })
+    const retryBody = JSON.parse(retried.stdout)
+    console.log(JSON.stringify({ stage, exitCode: retried.exitCode, success: retryBody.status === 'success', knownReason: reasons.find((reason) => reason === retryBody.reason) ?? 'other' }))
+    if (retried.exitCode === 0) {
+      const verified = inspectPaidInstall(retried, expected)
+      verifyStoredPaidClock(config, verified.lastSeenUnixMs)
+      console.log(JSON.stringify({ stage: 'explicit-owner-auth', passed: true }))
+    }
+  }
   console.log(JSON.stringify({ stage, exitCode: install.exitCode, success: body.status === 'success', installed: body.outcome === 'installed', configMatches: body.configDirectory === config, pathMatches: body.installedPath === join(config, 'xdoc-license.json'), digestMatches: body.installedSha256 === expected.licenseSha256, reasonIsStorageUnavailable: body.reason === 'local_auth_storage_unavailable' }))
   stage = 'install-inspection'
   const installed = inspectPaidInstall(install, expected)
