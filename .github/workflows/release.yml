@@ -383,6 +383,14 @@ jobs:
           token: ${{ secrets.XDOC_CLI_EVIDENCE_TOKEN }}
           path: release-evidence
           persist-credentials: false
+      - name: Checkout pinned release aggregation tools
+        uses: actions/checkout@v7
+        with:
+          path: release-tools
+          token: ${{ secrets.ACCESS_TOKEN }}
+          repository: ${{ secrets.SOURCE_REPO }}
+          ref: 07b70055750adb4bb237c3ddbf79706789f48359
+          persist-credentials: false
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -396,8 +404,8 @@ jobs:
         with:
           version: '>=${{ fromJSON(needs.source-identity.outputs.toolchain).pnpm }}'
       - name: Install verifier dependencies
-        working-directory: source
-        run: pnpm install --frozen-lockfile
+        working-directory: release-tools
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Download current raw candidates
         uses: actions/download-artifact@v8
         with:
@@ -413,10 +421,17 @@ jobs:
           RELEASE_STAGE: ${{ runner.temp }}/verified-release
           RELEASE_REPORT: ${{ runner.temp }}/xdoc-cli-release-aggregate.json
           RELEASE_FIXTURES: ${{ runner.temp }}/aggregate-fixtures
+          RELEASE_VERIFIER: 07b70055750adb4bb237c3ddbf79706789f48359
         run: |
+          use ../release-tools/tools/xdoc-cli-candidate.nu [verify-cli-checkouts]
+          let tools = (pwd | path join .. release-tools | path expand --strict)
+          verify-cli-checkouts (which git | first | get path) $tools (pwd | into string) $env.RELEASE_SOURCE $env.RELEASE_VERIFIER
           mkdir $env.RELEASE_FIXTURES
-          pnpm xdoc-cli:probe-fixtures --output-dir $env.RELEASE_FIXTURES --json
-          node tools/xdoc-cli-release.mjs --action aggregate --release-input $env.RELEASE_EVIDENCE --source-revision $env.RELEASE_SOURCE --candidate-root $env.CANDIDATE_ROOT --fixtures $env.RELEASE_FIXTURES --default-license (pwd | path join s8fy LICENSE) --stage-dir $env.RELEASE_STAGE --report $env.RELEASE_REPORT --require-paid
+          nu --no-config-file ../release-tools/tools/xdoc-cli-probe-fixtures.nu --output-dir $env.RELEASE_FIXTURES --json
+          if $env.LAST_EXIT_CODE != 0 { error make {msg: 'Release fixture generation failed'} }
+          node ../release-tools/tools/xdoc-cli-release.mjs --action aggregate --release-input $env.RELEASE_EVIDENCE --source-revision $env.RELEASE_SOURCE --candidate-root $env.CANDIDATE_ROOT --fixtures $env.RELEASE_FIXTURES --default-license (pwd | path join s8fy LICENSE) --stage-dir $env.RELEASE_STAGE --report $env.RELEASE_REPORT --require-paid
+          if $env.LAST_EXIT_CODE != 0 { error make {msg: 'Four-target release aggregation failed'} }
+          verify-cli-checkouts (which git | first | get path) $tools (pwd | into string) $env.RELEASE_SOURCE $env.RELEASE_VERIFIER
       - name: Archive the verified frozen packages
         shell: nu {0}
         working-directory: source
