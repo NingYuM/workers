@@ -44,3 +44,13 @@ jobs:
           print ($checks | to json --indent 2)
           cd $scratch
           print (^pnpm args --output-dir $package --json | complete | to json --indent 2)
+          with-env {PNPM_CONFIG_SHELL_EMULATOR: 'true'} {
+            let expected = ['--output-dir' $package '--json' 'space and "quote"' 'literal $HOME & value']
+            let actual = (^pnpm --silent args ...$expected | from json)
+            if $actual != $expected { error make {msg: 'Package script did not preserve exact arguments'} }
+            cd $env.GITHUB_WORKSPACE
+            let emulated = ($scratch | path join 'emulated fixture')
+            mkdir $emulated
+            ^pnpm xdoc-cli:probe-fixtures --output-dir $emulated --json
+            if $env.LAST_EXIT_CODE != 0 { error make {msg: 'Emulated fixture generation failed'} }
+          }
