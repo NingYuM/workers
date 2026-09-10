@@ -32,5 +32,11 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
+      - uses: hustcer/setup-nu@v3
+        with:
+          version: '0.115.1'
       - name: Inspect bounded auth behavior with redacted assertions
-        run: node workflow/.github/scripts/windows-paid-diagnostic.mjs source observation evidence
+        shell: pwsh
+        run: |
+          'node workflow/.github/scripts/windows-paid-diagnostic.mjs source observation evidence' | Set-Content -Encoding utf8 diagnostic.nu
+          & ./workflow/.github/scripts/use-current-user-owner.ps1 -Script diagnostic.nu
