@@ -19,9 +19,17 @@ on:
         required: true
         description: The tag to release (e.g. v0.1.0)
       publish:
-        description: Use true for a single build followed by final publication approval; false validates only
+        description: Upload verified archives to draft Releases; final publication is manual
         type: boolean
         default: false
+      evidence_revision:
+        description: Exact pushed evidence commit; resolved automatically by just gh-rls
+        type: string
+        required: false
+      verifier_revision:
+        description: Exact pushed release tools commit; resolved automatically by just gh-rls
+        type: string
+        required: false
 jobs:
   source-identity:
     name: Validate release source identity
@@ -30,6 +38,7 @@ jobs:
       source_sha: ${{ steps.identity.outputs.source_sha }}
       source_version: ${{ steps.identity.outputs.source_version }}
       toolchain: ${{ steps.toolchain.outputs.versions }}
+      verifier_sha: ${{ steps.evidence.outputs.verifier_sha }}
       evidence_sha: ${{ steps.evidence.outputs.evidence_sha }}
       evidence_repository: ${{ steps.evidence.outputs.evidence_repository }}
     steps:
@@ -77,7 +86,8 @@ jobs:
         shell: nu {0}
         env:
           EVIDENCE_REPOSITORY: ${{ vars.XDOC_CLI_EVIDENCE_REPOSITORY }}
-          EVIDENCE_REVISION: ${{ vars.XDOC_CLI_EVIDENCE_REVISION }}
+          EVIDENCE_REVISION: ${{ inputs.evidence_revision || vars.XDOC_CLI_EVIDENCE_REVISION }}
+          VERIFIER_REVISION: ${{ inputs.verifier_revision || vars.XDOC_CLI_VERIFIER_REVISION }}
           EVIDENCE_TOKEN_AVAILABLE: ${{ secrets.XDOC_CLI_EVIDENCE_TOKEN != '' }}
         run: |
           mut missing = []
@@ -87,13 +97,16 @@ jobs:
           if not ($env.EVIDENCE_REVISION =~ '^[0-9a-f]{40}$') {
             $missing = ($missing | append 'XDOC_CLI_EVIDENCE_REVISION: repository variable containing the approved full commit SHA')
           }
+          if $env.VERIFIER_REVISION !~ '^[0-9a-f]{40}$' {
+            $missing = ($missing | append 'verifier_revision: full published release tools commit SHA')
+          }
           if $env.EVIDENCE_TOKEN_AVAILABLE != 'true' {
             $missing = ($missing | append 'XDOC_CLI_EVIDENCE_TOKEN: repository secret with read-only access to evidence')
           }
           if not ($missing | is-empty) {
             error make {msg: 'Release repository configuration is incomplete', help: ($missing | str join (char nl))}
           }
-          [$'evidence_sha=($env.EVIDENCE_REVISION)' $'evidence_repository=($env.EVIDENCE_REPOSITORY)' ''] | str join (char nl) | save --append $env.GITHUB_OUTPUT
+          [$'verifier_sha=($env.VERIFIER_REVISION)' $'evidence_sha=($env.EVIDENCE_REVISION)' $'evidence_repository=($env.EVIDENCE_REPOSITORY)' ''] | str join (char nl) | save --append $env.GITHUB_OUTPUT
       - name: Checkout approved release evidence
         uses: actions/checkout@v7
         with:
@@ -230,7 +243,7 @@ jobs:
         with:
           repository: ${{ secrets.SOURCE_REPO }}
           token: ${{ secrets.ACCESS_TOKEN }}
-          ref: 07969e5bc62805e81cd2b482e20e564152de700b
+          ref: ${{ needs.source-identity.outputs.verifier_sha }}
           path: release-tools
           persist-credentials: false
       - name: Install locked release probe dependencies
@@ -243,10 +256,11 @@ jobs:
           RELEASE_EVIDENCE: ${{ github.workspace }}/release-evidence/release.json
           XDOC_RELEASE_SOURCE_SHA: ${{ needs.source-identity.outputs.source_sha }}
           RELEASE_TARGET: ${{ matrix.target }}
+          RELEASE_VERIFIER: ${{ needs.source-identity.outputs.verifier_sha }}
           CANDIDATE_OUTPUT: ${{ runner.temp }}/xdoc-candidate
         run: |
           moon update
-          nu --no-config-file ../release-tools/tools/xdoc-cli-release-target.nu --source-root (pwd) --verifier-revision 07969e5bc62805e81cd2b482e20e564152de700b --release-input $env.RELEASE_EVIDENCE --source-revision $env.XDOC_RELEASE_SOURCE_SHA --target $env.RELEASE_TARGET --output-dir $env.CANDIDATE_OUTPUT --require-paid
+          nu --no-config-file ../release-tools/tools/xdoc-cli-release-target.nu --source-root (pwd) --verifier-revision $env.RELEASE_VERIFIER --release-input $env.RELEASE_EVIDENCE --source-revision $env.XDOC_RELEASE_SOURCE_SHA --target $env.RELEASE_TARGET --output-dir $env.CANDIDATE_OUTPUT --require-paid
       - name: Upload unarchived candidate and minimal reports
         uses: actions/upload-artifact@v7
         with:
@@ -299,26 +313,31 @@ jobs:
       contents: read
     uses: ./.github/workflows/release-artifact-verify.yml
   release:
-    name: Create Release
+    name: Upload draft Releases
     needs:
       - verify
       - source-identity
     runs-on: ubuntu-latest
     if: inputs.publish
-    environment: xdoc-cli-release
     permissions:
       actions: read
       contents: write
     steps:
-      - name: Require publication approval
+      - name: Require draft release destinations
         uses: actions/github-script@v8
+        env:
+          RELEASE_DESTINATIONS: ${{ secrets.SOURCE_REPO }},${{ secrets.SKILL_REPO }}
+          RELEASE_TAG: v${{ needs.source-identity.outputs.source_version }}
         with:
+          github-token: ${{ secrets.ACCESS_TOKEN }}
           script: |
-            const environment = await github.rest.repos.getEnvironment({
-              ...context.repo, environment_name: 'xdoc-cli-release',
-            });
-            if (!environment.data.protection_rules?.some(rule => rule.type === 'required_reviewers' && rule.reviewers?.length > 0)) {
-              core.setFailed('Configure required reviewers on the xdoc-cli-release environment before publishing.');
+            for (const destination of process.env.RELEASE_DESTINATIONS.split(',')) {
+              if (!/^[A-Za-z0-9_.-]+[/][A-Za-z0-9_.-]+$/.test(destination)) throw new Error('Invalid release destination');
+              const [owner, repo] = destination.split('/');
+              try {
+                const { data } = await github.rest.repos.getReleaseByTag({ owner, repo, tag: process.env.RELEASE_TAG });
+                if (!data.draft) throw new Error('An existing published release cannot be replaced by this draft workflow');
+              } catch (error) { if (error.status !== 404) throw error; }
             }
       - name: Require unchanged source tag
         uses: actions/github-script@v8
@@ -350,6 +369,7 @@ jobs:
           repository: ${{ secrets.SOURCE_REPO }}
           tag_name: v${{ needs.source-identity.outputs.source_version }}
           target_commitish: ${{ needs.source-identity.outputs.source_sha }}
+          draft: true
           generate_release_notes: true
           files: artifacts/*
       - name: Create GitHub Release for pptx-nova
@@ -359,6 +379,7 @@ jobs:
           repository: ${{ secrets.SKILL_REPO }}
           tag_name: v${{ needs.source-identity.outputs.source_version }}
           target_commitish: main
+          draft: true
           generate_release_notes: true
           files: artifacts/*
   aggregate:
@@ -389,7 +410,7 @@ jobs:
           path: release-tools
           token: ${{ secrets.ACCESS_TOKEN }}
           repository: ${{ secrets.SOURCE_REPO }}
-          ref: 2224229b722e5d7bdda73900bd2ec815530fff68
+          ref: ${{ needs.source-identity.outputs.verifier_sha }}
           persist-credentials: false
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -421,7 +442,7 @@ jobs:
           RELEASE_STAGE: ${{ runner.temp }}/verified-release
           RELEASE_REPORT: ${{ runner.temp }}/xdoc-cli-release-aggregate.json
           RELEASE_FIXTURES: ${{ runner.temp }}/aggregate-fixtures
-          RELEASE_VERIFIER: 2224229b722e5d7bdda73900bd2ec815530fff68
+          RELEASE_VERIFIER: ${{ needs.source-identity.outputs.verifier_sha }}
         run: |
           let tools = (pwd | path join .. release-tools | path expand --strict)
           nu --no-config-file ../release-tools/tools/xdoc-cli-checkouts.nu $tools (pwd | into string) $env.RELEASE_SOURCE $env.RELEASE_VERIFIER
