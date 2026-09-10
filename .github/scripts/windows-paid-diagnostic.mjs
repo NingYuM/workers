@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, win32 } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 // Diagnostic only: the independently hashed observation is not a release gate.
@@ -48,7 +48,12 @@ try {
   stage = 'stored-clock'
   verifyStoredPaidClock(config, installed.lastSeenUnixMs)
   stage = 'status-inspection'
-  inspectPaidStatus(runProbeCandidate({ binary, cwd: work, config, args: ['auth', 'status'] }), { ...expected, previousAnchor: installed.lastSeenUnixMs })
+  const status = runProbeCandidate({ binary, cwd: work, config, args: ['auth', 'status'] })
+  const statusBody = JSON.parse(status.stdout)
+  const path = statusBody.source?.path ?? ''
+  const installedPath = join(config, 'xdoc-license.json')
+  console.log(JSON.stringify({ stage: 'status-source', kindMatches: statusBody.source?.kind === 'config-path', pathMatches: path === installedPath, digestMatches: statusBody.source?.sha256 === expected.licenseSha256, normalizedMatches: win32.normalize(path) === installedPath, namespacedMatches: path === win32.toNamespacedPath(installedPath), caseMatches: path.toLowerCase() === installedPath.toLowerCase(), fieldCount: Object.keys(statusBody.source ?? {}).length }))
+  inspectPaidStatus(status, { ...expected, previousAnchor: installed.lastSeenUnixMs })
   console.log(JSON.stringify({ stage: 'auth-complete', passed: true }))
 } catch (error) {
   const line = String(error.stack).match(/xdoc-cli-paid-probe-auth\.mjs:(\d+):/)
