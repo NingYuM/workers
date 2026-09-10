@@ -12,7 +12,7 @@ jobs:
         with:
           repository: ${{ secrets.SOURCE_REPO }}
           token: ${{ secrets.ACCESS_TOKEN }}
-          ref: d9fa2cc8e37dfe4f251331d5c9b78a4627258b49
+          ref: 3a669795d9b5bbe48a8d5ede4b3c3398b74e925d
           path: source
           persist-credentials: false
       - uses: actions/checkout@v7
@@ -35,8 +35,13 @@ jobs:
       - uses: hustcer/setup-nu@v3
         with:
           version: '0.115.1'
-      - name: Inspect bounded auth behavior with redacted assertions
-        shell: pwsh
+      - uses: pnpm/setup@v2
+        with:
+          version: '12.4.0'
+      - name: Verify Windows probe regressions
+        working-directory: source
         run: |
-          'node workflow/.github/scripts/windows-paid-diagnostic.mjs source observation evidence' | Set-Content -Encoding utf8 diagnostic.nu
-          & ./workflow/.github/scripts/use-current-user-owner.ps1 -Script diagnostic.nu
+          pnpm install --frozen-lockfile --ignore-scripts
+          node --test --test-name-pattern="Windows status|probe configuration" tools/tests/xdoc-cli-paid-probe.test.mjs tools/tests/xdoc-cli-probe-config.test.mjs
+      - name: Inspect bounded auth behavior with redacted assertions
+        run: node workflow/.github/scripts/windows-paid-diagnostic.mjs source observation evidence
