@@ -230,7 +230,7 @@ jobs:
         with:
           repository: ${{ secrets.SOURCE_REPO }}
           token: ${{ secrets.ACCESS_TOKEN }}
-          ref: 3a669795d9b5bbe48a8d5ede4b3c3398b74e925d
+          ref: 07969e5bc62805e81cd2b482e20e564152de700b
           path: release-tools
           persist-credentials: false
       - name: Install locked release probe dependencies
@@ -246,7 +246,7 @@ jobs:
           CANDIDATE_OUTPUT: ${{ runner.temp }}/xdoc-candidate
         run: |
           moon update
-          nu --no-config-file ../release-tools/tools/xdoc-cli-release-target.nu --source-root (pwd) --release-input $env.RELEASE_EVIDENCE --source-revision $env.XDOC_RELEASE_SOURCE_SHA --target $env.RELEASE_TARGET --output-dir $env.CANDIDATE_OUTPUT --require-paid
+          nu --no-config-file ../release-tools/tools/xdoc-cli-release-target.nu --source-root (pwd) --verifier-revision 07969e5bc62805e81cd2b482e20e564152de700b --release-input $env.RELEASE_EVIDENCE --source-revision $env.XDOC_RELEASE_SOURCE_SHA --target $env.RELEASE_TARGET --output-dir $env.CANDIDATE_OUTPUT --require-paid
       - name: Upload unarchived candidate and minimal reports
         uses: actions/upload-artifact@v7
         with:
