@@ -179,6 +179,8 @@ jobs:
           moon -C parser-mbt fmt . --check
           moon -C ooxml-mc fmt . --check
           moon -C license-policy fmt . --check
+          moon -C markdown-converter fmt . --check
+          moon -C converter-mbt fmt . --check
           moon -C image-converter fmt . --check
           moon -C pdf-converter fmt . --check
           print '✅ Format check passed'
@@ -196,6 +198,7 @@ jobs:
           pnpm --filter @s8fy/pptx-viewer-solid build
           pnpm --filter @s8fy/pptx-viewer-svelte build
           pnpm --filter @s8fy/pptx-viewer-vue build
+          pnpm --filter @s8fy/pptx-converter build
           moon -C s8fy build cmd/main --target native --release
           moon -C pptx-gen build cmd/pptx-gen --target all --release
           moon -C moon-tex build . --target all --release
@@ -220,6 +223,8 @@ jobs:
           }
           moon -C license-policy build cmd/main --target wasm-gc --release --strip
           pnpm -r test
+          pnpm test:converter-conformance
+          pnpm test:converter-signing
           pnpm test:sdk-production-wasm
           pnpm test:sdk-declarations
           pnpm test:sdk-assets
@@ -259,6 +264,8 @@ jobs:
           moon -C license-policy test . test cmd/main --target native,js,wasm-gc
           moon -C license-policy test native_source --target native
           moon -C license-policy test cmd/provenance-service --target js
+          moon -C markdown-converter test . --target native,wasm-gc
+          moon -C converter-mbt test . cmd/main --target native,wasm-gc
           moon -C resource-policy test . --target all
           moon -C ooxml-mc test . test --target all
           moon -C image-converter test . cmd/main src/converter --target native
