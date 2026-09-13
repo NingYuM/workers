@@ -210,6 +210,21 @@ jobs:
           cp _build/wasm-gc/release/build/pdf_converter/cmd/main/main.wasm packages/pptx-parser/src/mbt/pdf-converter.wasm
           print '✅ Build succeeded'
 
+      - name: Setup uv for font preparation tests
+        if: matrix.lane == 'tooling' && runner.os == 'Linux'
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: '0.12.13'
+          enable-cache: false
+
+      - name: Test static font cache preparation
+        if: matrix.lane == 'tooling' && runner.os == 'Linux'
+        working-directory: source
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes fontconfig zip unzip
+          pnpm test:prepare-fonts
+
       - name: Test SDK and tooling
         if: matrix.lane == 'tooling'
         shell: nu {0}
