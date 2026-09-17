@@ -217,6 +217,12 @@ jobs:
           version: '0.12.13'
           enable-cache: false
 
+      - name: Setup Deno
+        if: matrix.lane == 'tooling' && matrix.os == 'ubuntu-latest'
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.6
+
       - name: Test static font cache preparation
         if: matrix.lane == 'tooling' && runner.os == 'Linux'
         working-directory: source
@@ -259,6 +265,11 @@ jobs:
             node --test tools/tests/cli-license-command.test.mjs tools/tests/cli-auth-local-actions.test.mjs
           }
           print '✅ SDK and tooling tests passed'
+
+      - name: Test packaged Converter in Deno
+        if: matrix.lane == 'tooling' && matrix.os == 'ubuntu-latest'
+        working-directory: source
+        run: pnpm smoke:converter:deno
 
       - name: Test MoonBit
         if: matrix.lane == 'test'
