@@ -244,6 +244,7 @@ jobs:
           }
           moon -C license-policy build cmd/main --target wasm-gc --release --strip
           pnpm -r test
+          pnpm --filter @s8fy/pptx-renderer test:integration
           pnpm test:converter-conformance
           pnpm test:converter-signing
           pnpm test:sdk-production-wasm
