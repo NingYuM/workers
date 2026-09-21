@@ -287,7 +287,7 @@ jobs:
           moon -C emf-mbt test . src/binary src/parser src/svg src/transform test --target all
           moon -C moon-tex test . src/font_runtime src/glyph test --target all
           moon -C pptx-gen test . src/ooxml src/opc src/spike src/xml test cmd/pptx-gen --target all
-          moon -C parser-mbt test . benchmarks cmd/main src/ooxml src/shape_path src/svg src/types src/utils src/zip test --target all
+          moon -C parser-mbt test . benchmarks cmd/main src/ooxml src/shape_path src/svg src/types src/utils src/zip test transitions --target all
           moon -C license-policy test . test cmd/main --target native,js,wasm-gc
           moon -C license-policy test native_source --target native
           moon -C license-policy test cmd/provenance-service --target js
