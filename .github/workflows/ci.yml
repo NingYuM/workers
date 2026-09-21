@@ -342,6 +342,20 @@ jobs:
         working-directory: source
         run: pnpm release:visual
 
+      - name: Slide transition composition and CSS equivalence
+        if: matrix.lane == 'agent'
+        working-directory: source
+        run: pnpm smoke:transitions "${{ runner.temp }}/transition-smoke"
+
+      - name: Upload transition frames and report
+        if: always() && matrix.lane == 'agent'
+        uses: actions/upload-artifact@v7
+        with:
+          name: transition-smoke-${{ matrix.os }}
+          path: ${{ runner.temp }}/transition-smoke
+          if-no-files-found: ignore
+          retention-days: 15
+
       - name: Server smoke test
         if: matrix.lane == 'test' && runner.os != 'Windows'
         shell: bash
