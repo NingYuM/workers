@@ -54,7 +54,7 @@ jobs:
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
-          version: '>=${{ fromJSON(steps.toolchain.outputs.versions).nushell }}'
+          version: '*'
       - name: Validate release execution tools
         shell: nu {0}
         working-directory: source
@@ -216,7 +216,7 @@ jobs:
       - name: Setup Nushell
         uses: hustcer/setup-nu@v3
         with:
-          version: '>=${{ fromJSON(needs.source-identity.outputs.toolchain).nushell }}'
+          version: '*'
       - name: Setup pnpm
         uses: pnpm/setup@v2
         with:

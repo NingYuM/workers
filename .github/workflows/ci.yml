@@ -13,9 +13,13 @@ on:
   workflow_dispatch:
     inputs:
       ref:
+        type: choice
         required: true
-        default: 'main'
+        default: 'feature/future'
         description: 'The git ref to run the workflow on'
+        options:
+          - feature/future
+          - main
       cold_build:
         type: boolean
         default: false
@@ -56,7 +60,7 @@ jobs:
         with:
           path: source
           token: ${{ secrets.ACCESS_TOKEN }}
-          ref: ${{ github.event.inputs.ref }}
+          ref: ${{ inputs.ref || 'main' }}
           repository: ${{ secrets.SOURCE_REPO }}
           # The provenance signer gate validates committed evidence ancestry.
           fetch-depth: 0
@@ -178,17 +182,7 @@ jobs:
         working-directory: source
         run: |
           pnpm fmt:check
-          moon -C s8fy fmt . --check
-          moon -C emf-mbt fmt . --check
-          moon -C moon-tex fmt . --check
-          moon -C pptx-gen fmt . --check
-          moon -C parser-mbt fmt . --check
-          moon -C ooxml-mc fmt . transition_values --check
-          moon -C license-policy fmt . --check
-          moon -C markdown-converter fmt . --check
-          moon -C converter-mbt fmt . --check
-          moon -C image-converter fmt . --check
-          moon -C pdf-converter fmt . --check
+          moon fmt --check
           print '✅ Format check passed'
 
       - name: Build

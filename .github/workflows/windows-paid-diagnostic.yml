@@ -34,7 +34,7 @@ jobs:
           node-version: '24'
       - uses: hustcer/setup-nu@v3
         with:
-          version: '0.115.1'
+          version: '*'
       - uses: pnpm/setup@v2
         with:
           version: '12.4.0'
