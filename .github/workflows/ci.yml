@@ -5,23 +5,29 @@ on:
     branches:
       - main
     paths-ignore:
-      - "*.md"
-      - "**/*.md"
-      - "xdoc-npm/**"
+      - '*.md'
+      - '**/*.md'
+      - 'xdoc-npm/**'
   pull_request:
     branches: [main]
   workflow_dispatch:
     inputs:
       ref:
         required: true
-        default: "main"
-        description: "The git ref to run the workflow on"
+        default: 'main'
+        description: 'The git ref to run the workflow on'
       cold_build:
         type: boolean
         default: false
         description: 'Rebuild without restoring or saving MoonBit outputs'
 
 jobs:
+  visual:
+    uses: ./.github/workflows/visual-ci.yml
+    with:
+      ref: ${{ inputs.ref || 'main' }}
+    secrets: inherit
+
   ci:
     name: ${{ matrix.lane == 'agent' && 'Agent gates' || matrix.lane == 'tooling' && 'SDK and tooling' || 'CI' }} (${{ matrix.os }}, ${{ matrix.node-version }})
     runs-on: ${{ matrix.os }}
@@ -70,7 +76,7 @@ jobs:
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v6
         with:
-          cache: "pnpm"
+          cache: 'pnpm'
           node-version: ${{ matrix.node-version }}
           cache-dependency-path: source/pnpm-lock.yaml
 
@@ -331,30 +337,6 @@ jobs:
         run: |
           just agent-pptx-gate
           just openxml-validate --suite --require
-
-      - name: Install Playwright Chromium
-        if: matrix.lane == 'agent'
-        working-directory: source
-        run: pnpm exec playwright install chromium
-
-      - name: Visual regression gate
-        if: matrix.lane == 'agent'
-        working-directory: source
-        run: pnpm release:visual
-
-      - name: Slide transition composition and CSS equivalence
-        if: matrix.lane == 'agent'
-        working-directory: source
-        run: pnpm smoke:transitions "${{ runner.temp }}/transition-smoke"
-
-      - name: Upload transition frames and report
-        if: always() && matrix.lane == 'agent'
-        uses: actions/upload-artifact@v7
-        with:
-          name: transition-smoke-${{ matrix.os }}
-          path: ${{ runner.temp }}/transition-smoke
-          if-no-files-found: ignore
-          retention-days: 15
 
       - name: Server smoke test
         if: matrix.lane == 'test' && runner.os != 'Windows'

@@ -40,9 +40,9 @@ on:
     branches:
       - main
     paths-ignore:
-      - "*.md"
-      - "**/*.md"
-      - "xdoc-npm/**"
+      - '*.md'
+      - '**/*.md'
+      - 'xdoc-npm/**'
 
 permissions:
   contents: read

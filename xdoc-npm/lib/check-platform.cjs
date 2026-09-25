@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-"use strict";
+'use strict'
 
-const { assertRuntimeSupport } = require("./platform.cjs");
+const { assertRuntimeSupport } = require('./platform.cjs')
 
 try {
-  assertRuntimeSupport();
+  assertRuntimeSupport()
 } catch (error) {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`xdoc install error: ${message}`);
-  process.exitCode = 1;
+  const message = error instanceof Error ? error.message : String(error)
+  console.error(`xdoc install error: ${message}`)
+  process.exitCode = 1
 }

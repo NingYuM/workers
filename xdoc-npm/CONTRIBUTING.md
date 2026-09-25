@@ -1,4 +1,3 @@
-
 ## Maintainer release process
 
 The release scripts require Nushell 0.115.1, Node.js 22 or newer, and npm

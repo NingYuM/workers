@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "semi": false,
+  "singleQuote": true,
+  "jsxSingleQuote": false,
+  "trailingComma": "all",
+  "tabWidth": 2,
+  "useTabs": false,
+  "bracketSpacing": true,
+  "arrowParens": "always",
+  "ignorePatterns": [
+    "theme-packs.generated.mjs",
+    "packages/pptx-parser/src/markup-compatibility.generated.js",
+    "test-fixtures/chart-3d/*.json",
+    "pdf-converter/licenses/afm/MustRead.html",
+    "packages/provenance-signer/src/worker-configuration.d.ts"
+  ]
+}
