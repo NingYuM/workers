@@ -297,6 +297,7 @@ jobs:
           moon -C ooxml-mc test . test transition_values --target all
           moon -C image-converter test . cmd/main src/converter --target native
           moon -C pdf-converter test . chart_core cmd/main cmd/native_main font_resolver png_encode src/chart_render src/converter src/font_parse src/font_runtime src/pdf_backend src/render_capture src/render_capture/tokenizer src/render_core src/render_support src/text_render test --target native,wasm-gc
+          moon -C pdf-converter test src/render_support/pixel_tests --target native
           print '✅ Tests passed'
 
       - name: Provenance signer remote preflight
