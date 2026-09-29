@@ -327,6 +327,7 @@ jobs:
         uses: actions/github-script@v8
         env:
           RELEASE_DESTINATIONS: ${{ secrets.SOURCE_REPO }},${{ secrets.SKILL_REPO }}
+          SKILL_REPOSITORY: ${{ secrets.SKILL_REPO }}
           RELEASE_TAG: v${{ needs.source-identity.outputs.source_version }}
         with:
           github-token: ${{ secrets.ACCESS_TOKEN }}
@@ -334,8 +335,9 @@ jobs:
             for (const destination of process.env.RELEASE_DESTINATIONS.split(',')) {
               if (!/^[A-Za-z0-9_.-]+[/][A-Za-z0-9_.-]+$/.test(destination)) throw new Error('Invalid release destination');
               const [owner, repo] = destination.split('/');
+              const tag = destination === process.env.SKILL_REPOSITORY ? `xdoc-${process.env.RELEASE_TAG}` : process.env.RELEASE_TAG;
               try {
-                const { data } = await github.rest.repos.getReleaseByTag({ owner, repo, tag: process.env.RELEASE_TAG });
+                const { data } = await github.rest.repos.getReleaseByTag({ owner, repo, tag });
                 if (!data.draft) throw new Error('An existing published release cannot be replaced by this draft workflow');
               } catch (error) { if (error.status !== 404) throw error; }
             }
@@ -372,12 +374,30 @@ jobs:
           draft: true
           generate_release_notes: true
           files: artifacts/*
+      - name: Ensure xdoc tag in pptx-nova
+        uses: actions/github-script@v8
+        env:
+          SKILL_REPOSITORY: ${{ secrets.SKILL_REPO }}
+          RELEASE_TAG: xdoc-v${{ needs.source-identity.outputs.source_version }}
+        with:
+          github-token: ${{ secrets.ACCESS_TOKEN }}
+          script: |
+            const [owner, repo] = process.env.SKILL_REPOSITORY.split('/');
+            const ref = `tags/${process.env.RELEASE_TAG}`;
+            try {
+              await github.rest.git.getRef({ owner, repo, ref });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              const { data: { object } } = await github.rest.git.getRef({ owner, repo, ref: 'heads/main' });
+              await github.rest.git.createRef({ owner, repo, ref: `refs/${ref}`, sha: object.sha });
+            }
       - name: Create GitHub Release for pptx-nova
         uses: softprops/action-gh-release@v3
         with:
           token: ${{ secrets.ACCESS_TOKEN }}
           repository: ${{ secrets.SKILL_REPO }}
-          tag_name: v${{ needs.source-identity.outputs.source_version }}
+          tag_name: xdoc-v${{ needs.source-identity.outputs.source_version }}
+          name: xdoc-v${{ needs.source-identity.outputs.source_version }}
           target_commitish: main
           draft: true
           generate_release_notes: true
