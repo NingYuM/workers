@@ -231,6 +231,11 @@ jobs:
           sudo apt-get install --yes fontconfig zip unzip
           pnpm test:prepare-fonts
 
+      - name: Test native asset path boundary
+        if: matrix.lane == 'tooling' && runner.os != 'Windows'
+        working-directory: source
+        run: node tools/tests/test-xdoc-asset-path.mjs --sanitize
+
       - name: Test SDK and tooling
         if: matrix.lane == 'tooling'
         shell: nu {0}
