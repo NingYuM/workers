@@ -1,7 +1,7 @@
 {
   "name": "@s8fy/xdoc",
   "version": "0.7.0",
-  "description": "The xdoc CLI packaged for installation through npm.",
+  "description": "Agent-native PPTX runtime for editable PowerPoint creation and editing, high-fidelity PDF/PNG export, Markdown extraction, and CLI/MCP automation.",
   "keywords": [
     "ai-agent",
     "cli",
