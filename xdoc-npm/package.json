@@ -1,6 +1,6 @@
 {
   "name": "@s8fy/xdoc",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Agent-native PPTX runtime for editable PowerPoint creation and editing, high-fidelity PDF/PNG export, Markdown extraction, and CLI/MCP automation.",
   "keywords": [
     "ai-agent",
@@ -51,17 +51,17 @@
     "test": "node --test tests/*.test.cjs"
   },
   "optionalDependencies": {
-    "@s8fy/xdoc-linux-arm64": "0.7.0",
-    "@s8fy/xdoc-linux-x64": "0.7.0",
-    "@s8fy/xdoc-macos-arm64": "0.7.0",
-    "@s8fy/xdoc-windows-x64": "0.7.0"
+    "@s8fy/xdoc-linux-arm64": "0.8.0",
+    "@s8fy/xdoc-linux-x64": "0.8.0",
+    "@s8fy/xdoc-macos-arm64": "0.8.0",
+    "@s8fy/xdoc-windows-x64": "0.8.0"
   },
   "engines": {
     "node": ">=22.0.0"
   },
   "preferUnplugged": true,
   "xdoc": {
-    "releaseTag": "v0.7.0",
+    "releaseTag": "v0.8.0",
     "sourceRepository": "hustcer/pptx"
   }
 }
