@@ -2,29 +2,29 @@
   "schemaVersion": "xdoc-npm-release-lock/v1",
   "source": {
     "repository": "hustcer/pptx",
-    "tag": "v0.8.0",
-    "version": "0.8.0"
+    "tag": "v0.9.0",
+    "version": "0.9.0"
   },
   "assets": {
     "linux-arm64": {
       "name": "xdoc-linux-arm64.tar.gz",
-      "sha256": "7c4dfeb189c7b99a66d2d01e807668b04fea6f11a25d44e0baa112eff3df9506",
-      "sizeBytes": 9336422
+      "sha256": "c4e59191d83e3b462bc28038e1d55284261fbe1809a5138e143668f279bbc08e",
+      "sizeBytes": 9370648
     },
     "linux-x64": {
       "name": "xdoc-linux-x64.tar.gz",
-      "sha256": "df8165c681917e95bf34835419aed2e65fcbfb4616b6ba0020dd33155a221f6a",
-      "sizeBytes": 9690670
+      "sha256": "ad730e139eeda18453d3a6860600afefbc1bc1133d1835ad73b2212731adbef0",
+      "sizeBytes": 9732017
     },
     "macos-arm64": {
       "name": "xdoc-macos-arm64.tar.gz",
-      "sha256": "6ec21d9ad75df735997235cfc216a1b348e902cafaafe44cc659200e18a30ce1",
-      "sizeBytes": 8711961
+      "sha256": "37e9236c0858852622fd1d61682efe28a593139953c0821e2608ddeb0fd3674c",
+      "sizeBytes": 8744059
     },
     "windows-x64": {
       "name": "xdoc-windows-x64.zip",
-      "sha256": "210d02a5e907a1a8723b57da38d13915d073e8bc103e20c2ab4a2b10163f43e6",
-      "sizeBytes": 9002409
+      "sha256": "3fc144c84dc27b2c54f7de6ce8728300e8cd989b5500056bf43905a554a375e2",
+      "sizeBytes": 9036639
     }
   }
 }
