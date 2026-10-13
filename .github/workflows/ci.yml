@@ -288,7 +288,13 @@ jobs:
           } else {
             $env.PATH = ($env.PATH | prepend $pdfium_lib_dir)
           }
-          moon -C s8fy test cmd/main cmd/server src/build_info src/local_auth src/convert src/core src/deliver src/pdf_text src/server src/support src/visual_oracle test_cases --target native
+          # Bound the largest native test build on Linux ARM runners.
+          let native_test_limits = if $nu.os-info.name == 'linux' and $env.RUNNER_ARCH? == 'ARM64' {
+            ['--jobs', '2', '--no-parallelize']
+          } else {
+            []
+          }
+          moon -C s8fy test cmd/main cmd/server src/build_info src/local_auth src/convert src/core src/deliver src/pdf_text src/server src/support src/visual_oracle test_cases --target native ...$native_test_limits
           moon -C emf-mbt test . src/binary src/objects src/parser src/svg src/transform test --target all
           moon -C moon-tex test . src/font_runtime src/glyph test --target all
           moon -C pptx-gen test . src/ooxml src/opc src/spike src/xml test cmd/pptx-gen --target all
