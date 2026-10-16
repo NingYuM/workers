@@ -82,6 +82,21 @@ directory.
 Normal releases use GitHub OIDC trusted publishing and npm provenance; they do
 not use a long-lived npm token.
 
+### Repackaging an existing binary release
+
+All five npm packages use the version in `package.json`. The release lock and
+`xdoc.releaseTag` identify the binary release independently. For example, npm
+`0.12.1` can reuse the `v0.12.0` binaries with unchanged hashes and sizes.
+Update the main version and all four exact optional dependencies together, then
+use the normal checks and publishing workflow. All four platform packages are
+still staged, verified, and published before the main package.
+
+When updating from upstream, use `nu scripts/update-release.nu v0.13.0` as usual.
+If the desired npm version differs from upstream (including when that upstream
+version was already used for an npm repack), specify it explicitly:
+`nu scripts/update-release.nu v0.12.1 --package-version 0.12.2`.
+Choose an unused npm version; published npm versions cannot be overwritten.
+
 ### Failure and rerun behavior
 
 No workflow step uses `continue-on-error`. If a platform package was published

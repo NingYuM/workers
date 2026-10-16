@@ -81,12 +81,12 @@ function main() {
   }
 
   const plan = JSON.parse(fs.readFileSync(path.join(stagingDirectory, 'release-plan.json'), 'utf8'))
-  if (plan.source?.version !== expectedVersion) {
+  const base = plan.packages.find((entry) => entry.kind === 'base')
+  if (base?.version !== expectedVersion) {
     fail(
-      `Release plan version mismatch: expected ${expectedVersion}, received ${plan.source?.version}.`,
+      `Release plan version mismatch: expected ${expectedVersion}, received ${base?.version}.`,
     )
   }
-  const base = plan.packages.find((entry) => entry.kind === 'base')
   const native = plan.packages.find((entry) => entry.id === platform.id)
   if (!base || !native || native.name !== platform.packageName) {
     fail(`Release plan does not contain the expected packages for ${platform.id}.`)
@@ -122,8 +122,8 @@ function main() {
     )
     const result = run(process.execPath, [launcher, '--version'])
     const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`.trim()
-    if (!containsExactVersion(output, expectedVersion)) {
-      fail(`Staged xdoc version mismatch: expected ${expectedVersion}, received "${output}".`)
+    if (!containsExactVersion(output, plan.source.version)) {
+      fail(`Staged xdoc version mismatch: expected ${plan.source.version}, received "${output}".`)
     }
     console.log(`Verified staged @s8fy/xdoc ${expectedVersion} on ${platform.id}: ${output}`)
   } finally {

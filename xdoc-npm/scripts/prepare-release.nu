@@ -44,7 +44,7 @@ def platform-package [project: record, release: record, platform: record, extrac
   let binary_size = (file-size $binary_path)
   let package_manifest = {
     name: $platform.packageName
-    version: $project.lock.source.version
+    version: $project.package.version
     description: $'Native xdoc binary for ($platform.id).'
     homepage: $PACKAGE_HOMEPAGE
     bugs: {url: $PACKAGE_BUGS_URL}
@@ -112,7 +112,7 @@ def platform-package [project: record, release: record, platform: record, extrac
     kind: 'platform'
     id: $platform.id
     name: $platform.packageName
-    version: $project.lock.source.version
+    version: $project.package.version
     directory: $'packages/($platform.id)'
     archiveSha256: $locked.sha256
     binarySha256: $binary_sha256
@@ -202,7 +202,7 @@ def main [
       kind: 'base'
       id: 'base'
       name: '@s8fy/xdoc'
-      version: $project.lock.source.version
+      version: $project.package.version
       directory: 'packages/base'
       packageIntegrity: $base_report.integrity
       packageShasum: $base_report.shasum

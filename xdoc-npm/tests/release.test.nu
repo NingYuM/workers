@@ -14,7 +14,15 @@ let project = (validate-project)
 
 assert equal ($project.platforms | length) 4
 assert equal $project.lock.source.tag $'v($project.lock.source.version)'
-assert equal $project.package.version $project.lock.source.version
+assert equal $project.package.optionalDependencies (expected-optional-dependencies $project.package.version)
+validate-package-version '0.12.0' '0.12.0'
+validate-package-version '0.12.1' '0.12.0'
+validate-package-version '0.12.2' '0.12.1'
+validate-package-version '0.13.0' '0.13.0'
+validate-package-version '0.13.0-beta.1' '0.13.0-beta.1'
+assert error {|| validate-package-version '0.11.9' '0.12.0' }
+assert error {|| validate-package-version '0.12.0-beta.1' '0.12.0' }
+assert error {|| validate-package-version 'not-a-version' '0.12.0' }
 assert ($project.lock.assets.linux-x64.sha256 =~ '^[0-9a-f]{64}$')
 
 assert equal (normalize-release-tag '0.3.10') {tag: 'v0.3.10', version: '0.3.10'}

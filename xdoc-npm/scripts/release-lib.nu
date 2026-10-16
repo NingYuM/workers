@@ -6,8 +6,8 @@ export const RELEASE_LOCK_PATH = path self ../release-lock.json
 export const PACKAGE_PATH = path self ../package.json
 export const SOURCE_REPOSITORY = 'hustcer/pptx'
 export const PACKAGE_REPOSITORY = 'hustcer/workers'
-export const PACKAGE_HOMEPAGE = 'https://github.com/hustcer/workers/tree/main/xdoc-npm#readme'
-export const PACKAGE_BUGS_URL = 'https://github.com/hustcer/workers/issues'
+export const PACKAGE_HOMEPAGE = 'https://structurify.io/en/products/pptx-runtime'
+export const PACKAGE_BUGS_URL = 'https://github.com/hustcer/xdoc-feedback/issues'
 export const PACKAGE_GIT_URL = 'git+https://github.com/hustcer/workers.git'
 export const NPM_REGISTRY = 'https://registry.npmjs.org'
 
@@ -183,7 +183,7 @@ export def validate-project []: nothing -> record {
   let lock = (load-release-lock)
   let package = (open $PACKAGE_PATH)
   let identity = (normalize-release-tag $lock.source.tag)
-  let expected_dependencies = (expected-optional-dependencies $identity.version)
+  let expected_dependencies = (expected-optional-dependencies $package.version)
 
   if $identity.version != $lock.source.version {
     fail 'The release lock tag and version do not match.'
@@ -194,9 +194,7 @@ export def validate-project []: nothing -> record {
   if ($package.name? | default '') != '@s8fy/xdoc' {
     fail 'The base package name must be @s8fy/xdoc.'
   }
-  if ($package.version? | default '') != $identity.version {
-    fail 'The base package version does not match the release lock.'
-  }
+  validate-package-version ($package.version? | default '') $identity.version
   if ($package.xdoc.releaseTag? | default '') != $identity.tag {
     fail 'The base package release tag does not match the release lock.'
   }
@@ -230,6 +228,13 @@ export def validate-project []: nothing -> record {
   }
 
   {platforms: $platforms, lock: $lock, package: $package}
+}
+
+# Validate independent npm and native versions before writing or packaging a release.
+export def validate-package-version [package_version: string, native_version: string]: nothing -> nothing {
+  if ($package_version | into semver) < ($native_version | into semver) {
+    fail 'The npm package version must not be older than the native release version.'
+  }
 }
 
 # Write formatted JSON with a final newline.

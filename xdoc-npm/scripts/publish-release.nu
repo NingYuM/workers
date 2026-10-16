@@ -200,7 +200,7 @@ def main [
   let checked = (
     $plan.packages
     | each {|entry|
-        if $entry.version != $project.lock.source.version {
+        if $entry.version != $project.package.version {
           fail $'Unexpected package version in release plan: ($entry.name)@($entry.version)'
         }
         let directory = (package-path $staging_dir $entry.directory)

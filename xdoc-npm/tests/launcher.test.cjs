@@ -127,8 +127,8 @@ test('keeps the public package manifest aligned with the platform manifest', () 
   )
 
   assert.equal(packageJson.name, '@s8fy/xdoc')
-  assert.equal(packageJson.homepage, 'https://github.com/hustcer/workers/tree/main/xdoc-npm#readme')
-  assert.deepEqual(packageJson.bugs, { url: 'https://github.com/hustcer/workers/issues' })
+  assert.equal(packageJson.homepage, 'https://structurify.io/en/products/pptx-runtime')
+  assert.deepEqual(packageJson.bugs, { url: 'https://github.com/hustcer/xdoc-feedback/issues' })
   assert.deepEqual(packageJson.repository, {
     type: 'git',
     url: 'git+https://github.com/hustcer/workers.git',
@@ -136,7 +136,8 @@ test('keeps the public package manifest aligned with the platform manifest', () 
   })
   assert.deepEqual(packageJson.files, ['lib', 'platforms.json'])
   assert.deepEqual(packageJson.optionalDependencies, expectedDependencies)
-  assert.equal(packageJson.xdoc.releaseTag, `v${packageJson.version}`)
+  const lock = JSON.parse(fs.readFileSync(path.join(projectDir, 'release-lock.json'), 'utf8'))
+  assert.equal(packageJson.xdoc.releaseTag, lock.source.tag)
 })
 
 test('all launcher and install diagnostics are English-only', () => {

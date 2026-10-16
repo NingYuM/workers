@@ -29,6 +29,7 @@ jobs:
     outputs:
       version: ${{ steps.release.outputs.version }}
       release_tag: ${{ steps.release.outputs.release_tag }}
+      binary_version: ${{ steps.release.outputs.binary_version }}
 
     steps:
       - name: Require the publishing repository and main branch
@@ -70,8 +71,9 @@ jobs:
         run: |
           let lock = (open release-lock.json)
           let output = ([
-            $"version=($lock.source.version)"
+            $"version=((open package.json).version)"
             $"release_tag=($lock.source.tag)"
+            $"binary_version=($lock.source.version)"
           ] | str join (char nl))
           $"($output)(char nl)" | save --append $env.GITHUB_OUTPUT
 
@@ -160,6 +162,7 @@ jobs:
     outputs:
       version: ${{ needs.prepare.outputs.version }}
       release_tag: ${{ needs.prepare.outputs.release_tag }}
+      binary_version: ${{ needs.prepare.outputs.binary_version }}
 
     steps:
       - name: Checkout repository
@@ -251,5 +254,5 @@ jobs:
         shell: bash
         env:
           EXPECTED_PLATFORM: ${{ matrix.platform }}
-          XDOC_VERSION: ${{ needs.publish.outputs.version }}
+          XDOC_VERSION: ${{ needs.publish.outputs.binary_version }}
         run: node xdoc-npm/scripts/verify-installed.cjs "$XDOC_VERSION" "$EXPECTED_PLATFORM"
