@@ -277,7 +277,7 @@ retain the bundled PDFium third-party license notices.
 ## Support and package maintenance
 
 Report installation, platform selection, and launcher issues in the
-[`hustcer/workers` issue tracker](https://github.com/hustcer/workers/issues).
+[`hustcer/xdoc-feedback` issue tracker](https://github.com/hustcer/xdoc-feedback/issues).
 For native runtime behavior, use the upstream support channel supplied with
 your xdoc distribution or license.
 
@@ -285,6 +285,3 @@ This directory maintains npm packaging and release automation. Native release
 assets are pinned to reviewed SHA-256 digests in
 [`release-lock.json`](https://github.com/hustcer/workers/blob/main/xdoc-npm/release-lock.json).
 See the
-[maintainer guide](https://github.com/hustcer/workers/blob/main/xdoc-npm/CONTRIBUTING.md)
-for packaging and release checks. To keep exploring the CLI, start with
-`xdoc schema --mode examples` or `xdoc pptx <action> --help`.
