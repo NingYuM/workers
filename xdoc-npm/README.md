@@ -11,6 +11,44 @@ Build a quarterly review from JSON. Refresh a report from business data.
 Restyle an existing deck. Let an agent resolve exact objects, preview its
 changes, and leave a record of how the presentation was produced.
 
+## Key features
+
+- **Native PowerPoint creation and editing.** Work with editable text, shapes,
+  tables, pictures, connectors, equations, and supported charts. Focused edits
+  preserve untouched OOXML; existing SmartArt and complex timing have separate
+  preservation boundaries.
+- **Charts with real data.** Create and update supported classic, 3D, and modern
+  Office charts, including embedded workbook data. Supported 3D scene fields
+  remain native OOXML. Chart kinds, variants, and styling follow the installed
+  schema; authoring and rendering support are separate.
+- **JSON patches and data-driven reports.** Use closed-schema operations,
+  deterministic selectors, recipes, template bindings, loops, conditionals,
+  and macros to assemble or update presentations from supplied content.
+- **Local PDF and PNG rendering.** Export supported text, vectors, images,
+  tables, charts, equations, and effects without PowerPoint, LibreOffice,
+  a browser, or a conversion service. Supply suitable fonts; some effects use
+  raster layers, and PDF/PNG does not play animations.
+- **Markdown for RAG and AI input.** Keep source slide numbers, supported
+  chart data, tables, notes, and packaged image references/assets. AI detail
+  adds element context. OCR, embeddings, indexing, and answer generation belong
+  to the consuming application.
+- **Reviewable Agent automation.** Discover runtime schemas, dry-run before
+  writing, inspect structured errors, and retain revision sidecars. CLI,
+  JSON-RPC, and MCP provide distinct integration surfaces.
+
+## Testing and fidelity validation
+
+- **6,000+ automated test cases** across the Runtime and related authoring,
+  parsing, PDF/PNG, Markdown, math, and metafile engines help detect regressions.
+- **Tested on 500+ real presentation decks**, alongside focused fixtures,
+  to evaluate real-document behavior and rendering.
+- **A proprietary fidelity workflow developed in-house** supports ongoing
+  rendering improvements and regression prevention.
+
+Explore the [product overview](https://docs.structurify.io/en/pptx-runtime/),
+[quickstart](https://docs.structurify.io/en/pptx-runtime/getting-started/),
+and [Agent protocol guide](https://docs.structurify.io/en/pptx-runtime/agents/).
+
 ## Install and try it
 
 Requires **Node.js 22 or newer**. See [supported platforms](#supported-platforms).
@@ -198,7 +236,7 @@ xdoc schema > runtime-schema.json
 xdoc pptx catalog shapes --json
 ```
 
-The **0.6.0** runtime exposes **58 patch operations, 18 slide recipe kinds,
+The **0.12.2** runtime exposes **58 patch operations, 18 slide recipe kinds,
 182 preset shapes, 9 theme packs, and 4 style packs**. Chart types and advanced
 features carry individual support statuses. Use the installed schema to choose
 supported operations and read the scope of partial or preserve-only features.
@@ -284,4 +322,4 @@ your xdoc distribution or license.
 This directory maintains npm packaging and release automation. Native release
 assets are pinned to reviewed SHA-256 digests in
 [`release-lock.json`](https://github.com/hustcer/workers/blob/main/xdoc-npm/release-lock.json).
-See the
+See the [maintainer release process](https://github.com/hustcer/workers/blob/main/xdoc-npm/CONTRIBUTING.md).
