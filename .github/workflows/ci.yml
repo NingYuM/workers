@@ -33,7 +33,7 @@ jobs:
     secrets: inherit
 
   ci:
-    name: ${{ matrix.lane == 'agent' && 'Agent gates' || matrix.lane == 'tooling' && 'SDK and tooling' || 'CI' }} (${{ matrix.os }}, ${{ matrix.node-version }})
+    name: ${{ matrix.lane == 'agent-contracts' && 'Agent contracts' || matrix.lane == 'agent-fixtures' && 'Agent fixtures' || matrix.lane == 'agent-tooling' && 'Agent tooling' || matrix.lane == 'tooling' && 'SDK and tooling' || 'CI' }} (${{ matrix.os }}, ${{ matrix.node-version }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -44,12 +44,18 @@ jobs:
         # SDK/release harnesses and MoonBit suites are independent after Build.
         # Separate runners shorten every platform's critical path, even cold.
         lane: [test, tooling]
-        # Run the macOS-only gates alongside the cross-platform tests. Keep
-        # their complete build prerequisites on their own runner.
+        # Independent Agent gates build only their own prerequisites. The test
+        # lane owns MoonBit suites, including isolated xdoc write-path coverage.
         include:
           - os: macos-15
-            node-version: 24
-            lane: agent
+            node-version: '24'
+            lane: agent-contracts
+          - os: macos-15
+            node-version: '24'
+            lane: agent-fixtures
+          - os: macos-15
+            node-version: '24'
+            lane: agent-tooling
 
     steps:
       - name: Configure Git line endings
@@ -186,6 +192,7 @@ jobs:
           print '✅ Format check passed'
 
       - name: Build
+        if: matrix.lane == 'test' || matrix.lane == 'tooling'
         shell: nu {0}
         working-directory: source
         run: |
@@ -294,7 +301,15 @@ jobs:
           } else {
             []
           }
-          moon -C s8fy test cmd/main cmd/server src/build_info src/local_auth src/convert src/core src/deliver src/pdf_text src/server src/support src/visual_oracle test_cases --target native ...$native_test_limits
+          # Also own the former Agent write suite's empty-config guarantee.
+          let xdoc_test_config = (mktemp --directory)
+          try {
+            with-env {XDOC_CONFIG_PATH: $xdoc_test_config} {
+              moon -C s8fy test cmd/main cmd/server src/build_info src/local_auth src/convert src/core src/deliver src/pdf_text src/server src/support src/visual_oracle test_cases --target native ...$native_test_limits
+            }
+          } finally {
+            rm --recursive $xdoc_test_config
+          }
           moon -C emf-mbt test . src/binary src/objects src/parser src/svg src/transform test --target all
           moon -C moon-tex test . src/font_runtime src/glyph test --target all
           moon -C pptx-gen test . src/ooxml src/opc src/spike src/xml test cmd/pptx-gen --target all
@@ -322,27 +337,59 @@ jobs:
         run: pnpm provenance-signer:preflight
 
       - name: Setup Agent gate tools
-        if: matrix.lane == 'agent'
+        if: startsWith(matrix.lane, 'agent-')
         run: |
           if ! command -v just >/dev/null 2>&1; then
             brew install just
           fi
+
+      - name: Setup OpenXML validator
+        if: matrix.lane == 'agent-fixtures'
+        run: |
           pnpm i -g @officecli/officecli
           # OfficeCLI downloads its native binary lazily. Finish that download
           # before the OpenXmlValidator suite invokes it for the first time.
           officecli --version
 
+      - name: Agent contract gates
+        if: matrix.lane == 'agent-contracts'
+        working-directory: source
+        run: just agent-pptx-g0
+
+      - name: Agent tooling gates
+        if: matrix.lane == 'agent-tooling'
+        working-directory: source
+        run: just agent-pptx-tooling
+
+      - name: Build Agent fixture CLI
+        if: matrix.lane == 'agent-fixtures'
+        working-directory: source
+        run: moon -C s8fy build cmd/main --target native
+
       - name: OpRaw fixture gate
-        if: matrix.lane == 'agent'
+        if: matrix.lane == 'agent-fixtures'
         working-directory: source
         run: just pdf-opraw-fixtures
 
-      - name: Agent gate
-        if: matrix.lane == 'agent'
+      - name: Agent parity gate
+        if: matrix.lane == 'agent-fixtures'
         working-directory: source
-        run: |
-          just agent-pptx-gate
-          just openxml-validate --suite --require
+        run: nu tools/agent-pptx-parity.nu
+
+      - name: Agent visual gate
+        if: matrix.lane == 'agent-fixtures'
+        working-directory: source
+        run: nu tools/agent-pptx-visual-gate.nu
+
+      - name: Agent WASM size gate
+        if: matrix.lane == 'agent-fixtures'
+        working-directory: source
+        run: nu tools/check-wasm-size.nu --baseline docs/agent-pptx-baselines.json
+
+      - name: OpenXML fixture gate
+        if: matrix.lane == 'agent-fixtures'
+        working-directory: source
+        run: just openxml-validate --suite --require
 
       - name: Server smoke test
         if: matrix.lane == 'test' && runner.os != 'Windows'
