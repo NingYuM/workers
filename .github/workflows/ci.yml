@@ -47,13 +47,13 @@ jobs:
         # Independent Agent gates build only their own prerequisites. The test
         # lane owns MoonBit suites, including isolated xdoc write-path coverage.
         include:
-          - os: macos-15
+          - os: ubuntu-latest
             node-version: '24'
             lane: agent-contracts
-          - os: macos-15
+          - os: ubuntu-latest
             node-version: '24'
             lane: agent-fixtures
-          - os: macos-15
+          - os: ubuntu-latest
             node-version: '24'
             lane: agent-tooling
 
@@ -338,10 +338,7 @@ jobs:
 
       - name: Setup Agent gate tools
         if: startsWith(matrix.lane, 'agent-')
-        run: |
-          if ! command -v just >/dev/null 2>&1; then
-            brew install just
-          fi
+        uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b # v3
 
       - name: Setup OpenXML validator
         if: matrix.lane == 'agent-fixtures'
