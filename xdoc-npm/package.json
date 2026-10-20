@@ -1,6 +1,6 @@
 {
   "name": "@s8fy/xdoc",
-  "version": "0.12.5",
+  "version": "0.13.0",
   "description": "Local PowerPoint CLI and MCP server for editable PPTX, native 3D charts, JSON patches, template data binding, PDF/PNG export and Markdown extraction for RAG.",
   "keywords": [
     "3d-charts",
@@ -71,17 +71,17 @@
     "test": "node --test tests/*.test.cjs"
   },
   "optionalDependencies": {
-    "@s8fy/xdoc-linux-arm64": "0.12.5",
-    "@s8fy/xdoc-linux-x64": "0.12.5",
-    "@s8fy/xdoc-macos-arm64": "0.12.5",
-    "@s8fy/xdoc-windows-x64": "0.12.5"
+    "@s8fy/xdoc-linux-arm64": "0.13.0",
+    "@s8fy/xdoc-linux-x64": "0.13.0",
+    "@s8fy/xdoc-macos-arm64": "0.13.0",
+    "@s8fy/xdoc-windows-x64": "0.13.0"
   },
   "engines": {
     "node": ">=22.0.0"
   },
   "preferUnplugged": true,
   "xdoc": {
-    "releaseTag": "v0.12.5",
+    "releaseTag": "v0.13.0",
     "sourceRepository": "hustcer/pptx"
   }
 }
