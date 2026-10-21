@@ -298,8 +298,9 @@ macOS versions receive an actionable error.
 
 Free mode provides all core features for **single-user local use**, with up to
 **10 slides per task** and **5 MiB of compressed PPTX inputs combined**.
-Visual outputs carry an `XDOC DEMO` watermark. No account or license credential
-is required to start; tasks exceeding the Free limits are denied.
+Visual outputs, including editable PPTX, PDF, and PNG, carry a `structurify.io`
+watermark. No account or license credential is required to start; tasks exceeding
+the Free limits are denied.
 
 Personal and Enterprise licenses are offline entitlements that remove the
 plan-level slide/PPTX byte limits and new plan watermarks. Local scripts and a
