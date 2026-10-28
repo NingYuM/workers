@@ -39,7 +39,7 @@ jobs:
       fail-fast: false
       matrix:
         # Keep macOS pinned so compiler SDK behavior cannot drift with macos-latest.
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-15, windows-latest]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]
         node-version: [24]
         # SDK/release harnesses and MoonBit suites are independent after Build.
         # Separate runners shorten every platform's critical path, even cold.
