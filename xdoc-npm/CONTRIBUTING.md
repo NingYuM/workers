@@ -135,7 +135,7 @@ this secret.
 export NODE_AUTH_TOKEN='replace-with-the-short-lived-token'
 export NPM_CONFIG_USERCONFIG="$(mktemp)"
 printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
-npm install --global npm@12.0.2 --ignore-scripts
+npm install --global npm@12 --ignore-scripts
 npm trust github @s8fy/xdoc --file xdoc-npm-publish.yml --repo hustcer/workers --env npm --allow-publish -y
 npm trust github @s8fy/xdoc-linux-arm64 --file xdoc-npm-publish.yml --repo hustcer/workers --env npm --allow-publish -y
 npm trust github @s8fy/xdoc-linux-x64 --file xdoc-npm-publish.yml --repo hustcer/workers --env npm --allow-publish -y
