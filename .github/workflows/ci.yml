@@ -328,7 +328,7 @@ jobs:
           let xdoc_test_config = (mktemp --directory)
           try {
             with-env {XDOC_CONFIG_PATH: $xdoc_test_config} {
-              moon -C s8fy test cmd/main cmd/server src/build_info src/local_auth src/convert src/core src/deliver src/pdf_text src/server src/support src/visual_oracle test_cases --target native ...$native_test_limits
+              moon -C s8fy test cmd/main cmd/main/arguments cmd/server src/build_info src/local_auth src/convert src/core src/deliver src/pdf_text src/server src/support src/visual_oracle test_cases --target native ...$native_test_limits
             }
           } finally {
             rm --recursive $xdoc_test_config
