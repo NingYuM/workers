@@ -53,7 +53,10 @@ jobs:
         with:
           version: '*'
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          pnpm install --frozen-lockfile
+          npx skills add -y -g hustcer/pptx-nova --skill pptx-nova -a claude-code cursor opencode codex
+          print '✅ Dependencies installed'
       - name: Build JavaScript dependencies and check renderer types
         run: |
           pnpm --filter @s8fy/emf2svg build
