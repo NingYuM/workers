@@ -207,6 +207,7 @@ jobs:
           pnpm --filter @s8fy/pptx-viewer-svelte build
           pnpm --filter @s8fy/pptx-viewer-vue build
           pnpm --filter @s8fy/pptx-converter build
+          pnpm --filter @s8fy/pptx-writer build
           moon -C s8fy build cmd/main --target native --release
           moon -C pptx-gen build cmd/pptx-gen --target all --release
           moon -C moon-tex build . --target all --release
@@ -260,6 +261,8 @@ jobs:
           pnpm --filter @s8fy/pptx-renderer test:integration
           pnpm test:converter-conformance
           pnpm test:converter-signing
+          pnpm test:writer-conformance
+          pnpm test:writer-signing
           pnpm test:sdk-production-wasm
           pnpm test:sdk-declarations
           pnpm test:sdk-assets
@@ -284,6 +287,11 @@ jobs:
         if: matrix.lane == 'tooling' && matrix.os == 'ubuntu-latest'
         working-directory: source
         run: pnpm smoke:converter:deno
+
+      - name: Test packaged Writer in Deno
+        if: matrix.lane == 'tooling' && matrix.os == 'ubuntu-latest'
+        working-directory: source
+        run: pnpm smoke:writer:deno
 
       - name: Setup Just for parser tools
         if: matrix.lane == 'tooling'
@@ -343,6 +351,7 @@ jobs:
           moon -C license-policy test cmd/provenance-service --target js
           moon -C markdown-converter test . --target native,wasm-gc
           moon -C converter-mbt test . cmd/main --target native,wasm-gc
+          moon -C writer-mbt test . cmd/main --target native,wasm-gc
           moon -C resource-policy test . --target all
           moon -C ooxml-mc test . test transition_values --target all
           moon -C image-converter test . cmd/main src/converter src/pdfium_bridge --target native
