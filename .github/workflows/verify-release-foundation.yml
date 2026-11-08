@@ -50,7 +50,7 @@ jobs:
             const facts = JSON.parse(fs.readFileSync('retained/native-facts/toolchain.json', 'utf8'));
             core.setOutput('compiler', facts.versions.compiler.split(' ')[0]);
             core.setOutput('core', facts.versions.core);
-      - uses: hustcer/setup-moonbit@v1
+      - uses: hustcer/setup-moonbit@main
         with:
           version: ${{ steps.observed.outputs.compiler }}
           core-version: ${{ steps.observed.outputs.core }}

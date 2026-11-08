@@ -121,7 +121,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: source/pnpm-lock.yaml
       - name: Setup MoonBit
-        uses: hustcer/setup-moonbit@v1
+        uses: hustcer/setup-moonbit@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: hustcer/setup-nu@v3

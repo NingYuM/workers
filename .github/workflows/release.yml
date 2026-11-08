@@ -210,7 +210,7 @@ jobs:
         with:
           arch: x64
       - name: Setup MoonBit
-        uses: hustcer/setup-moonbit@v1
+        uses: hustcer/setup-moonbit@main
         with:
           version: ${{ fromJSON(needs.source-identity.outputs.toolchain).moonbit.distribution }}
           core-version: ${{ fromJSON(needs.source-identity.outputs.toolchain).moonbit.core }}
