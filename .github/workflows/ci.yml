@@ -288,20 +288,22 @@ jobs:
         working-directory: source
         run: pnpm smoke:converter:deno
 
-      - name: Test packaged Writer in Deno
-        if: matrix.lane == 'tooling' && matrix.os == 'ubuntu-latest'
-        working-directory: source
-        run: pnpm smoke:writer:deno
-
-      - name: Setup Just for parser tools
-        if: matrix.lane == 'tooling'
-        uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b # v3
-
-      - name: Setup Bun for parser tools
+      # Bun is installed before the packaged Writer smoke so its runtime check is
+      # required rather than skipped; parser tools below reuse the same Bun.
+      - name: Setup Bun
         if: matrix.lane == 'tooling'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4
+
+      - name: Test packaged Writer in Deno and Bun
+        if: matrix.lane == 'tooling' && matrix.os == 'ubuntu-latest'
+        working-directory: source
+        run: node scripts/writer-tarball-smoke.mjs --runtimes-only --require-deno --require-bun
+
+      - name: Setup Just for parser tools
+        if: matrix.lane == 'tooling'
+        uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b # v3
 
       # SDK compatibility remains on the matrix Node version above. Parser
       # diagnostics use Node 24's WASM string builtins with Bun compiling TS.
