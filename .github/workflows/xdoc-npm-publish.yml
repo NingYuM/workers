@@ -154,7 +154,7 @@ jobs:
       - prepare
       - preflight
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 75
     environment: npm
     permissions:
       contents: read

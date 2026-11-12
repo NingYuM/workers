@@ -107,6 +107,13 @@ dist-tag before skipping it. It refuses to reuse an existing version whose
 metadata or packed content differs. The base package is never attempted until
 all four platform packages are confirmed visible.
 
+npm may hold a successful publication in validation before its version and
+dist-tag become visible. The publisher polls all platform packages together at
+15-second intervals for approximately 30 minutes, then does the same for the
+base package. A timeout does not mean publication failed: check npm's validation
+status and rerun the same workflow and dist-tag once the packages are visible.
+Do not create a new version solely because visibility is delayed.
+
 ### One-time npm bootstrap
 
 npm trusted publishing can normally be configured only after a package exists.

@@ -110,21 +110,33 @@ def publish-one [plan_entry: record, package_dir: path, dist_tag: string, allow_
   }
 }
 
-def wait-for-package [plan_entry: record, package_dir: path, dist_tag: string] {
-  for attempt in 1..24 {
-    let metadata = (registry-package $plan_entry.name $plan_entry.version)
-    if $metadata != null {
-      let tag_is_ready = (validate-existing $plan_entry $package_dir $metadata $dist_tag)
-      if $tag_is_ready {
-        print $'Registry confirmed ($plan_entry.name)@($plan_entry.version) with dist-tag ($dist_tag).'
-        return
+export def wait-for-packages [
+  items: list<record>, dist_tag: string, query: closure,
+  --attempts: int = 121, --interval: duration = 15sec
+] {
+  if $attempts < 1 {
+    fail 'The npm visibility check requires at least one attempt.'
+  }
+  mut pending = $items
+  for attempt in 1..$attempts {
+    mut remaining = []
+    for item in $pending {
+      let metadata = (do $query $item.entry $attempt)
+      if $metadata != null and (validate-existing $item.entry $item.directory $metadata $dist_tag) {
+        print $'Registry confirmed ($item.entry.name)@($item.entry.version) with dist-tag ($dist_tag).'
+      } else {
+        $remaining = ($remaining | append $item)
       }
     }
-    if $attempt < 24 {
-      sleep 5sec
+    $pending = $remaining
+    if ($pending | is-empty) { return }
+    let names = ($pending | each {|item| $'($item.entry.name)@($item.entry.version)' } | str join ', ')
+    if $attempt == $attempts {
+      fail $'Timed out waiting for npm visibility and dist-tag ($dist_tag): ($names).' 'Check npm validation and registry status, then rerun the same workflow and dist-tag when the packages are visible.'
     }
+    print $'Waiting for npm validation or dist-tag propagation: ($names); attempt ($attempt)/($attempts).'
+    sleep $interval
   }
-  fail $'Timed out waiting for ($plan_entry.name)@($plan_entry.version) and dist-tag ($dist_tag) to become visible on npm.' 'Use a new package version or update the dist-tag through an explicitly authorized maintenance process.'
 }
 
 def validate-auth [allow_token_auth: bool] {
@@ -233,13 +245,12 @@ def main [
   for item in $platforms {
     publish-one $item.entry $item.directory $tag $allow_token_auth
   }
-  for item in $platforms {
-    wait-for-package $item.entry $item.directory $tag
-  }
+  let query = {|entry, _attempt| registry-package $entry.name $entry.version }
+  wait-for-packages $platforms $tag $query
 
   let base = ($bases | first)
   publish-one $base.entry $base.directory $tag $allow_token_auth
-  wait-for-package $base.entry $base.directory $tag
+  wait-for-packages [$base] $tag $query
   print $'Published and verified all packages for ($project.lock.source.tag).'
   print 'No Git commit, tag, or push was performed.'
 }

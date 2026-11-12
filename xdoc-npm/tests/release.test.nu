@@ -8,6 +8,7 @@ use ../scripts/publish-release.nu [
   parse-registry-metadata
   validate-dist-tag
   validate-existing
+  wait-for-packages
 ]
 
 let project = (validate-project)
@@ -107,6 +108,24 @@ assert error {|| validate-existing $base_plan $PROJECT_DIR ($existing_base | upd
 assert error {|| validate-existing $base_plan $PROJECT_DIR ($existing_base | update dist.integrity 'sha512-different') 'latest' }
 assert error {|| validate-existing $base_plan $PROJECT_DIR ($existing_base | update dist.shasum 'different-shasum') 'latest' }
 assert error {|| validate-existing $base_plan $PROJECT_DIR ($existing_base | update optionalDependencies {}) 'latest' }
+
+let base_item = {entry: $base_plan, directory: $PROJECT_DIR}
+let delayed = {|_entry, attempt|
+  if $attempt == 1 { null } else if $attempt == 2 {
+    $existing_base | update 'dist-tags' {latest: '0.3.10'}
+  } else { $existing_base }
+}
+wait-for-packages [$base_item] 'latest' $delayed --attempts 3 --interval 0sec
+let fast_item = ($base_item | insert entry.test_fast true)
+let slow_item = ($base_item | insert entry.test_fast false)
+let staggered = {|entry, attempt|
+  if $entry.test_fast and $attempt > 1 { error make {msg: 'A confirmed package was queried again'} }
+  if $entry.test_fast or $attempt == 3 { $existing_base } else { null }
+}
+wait-for-packages [$fast_item $slow_item] 'latest' $staggered --attempts 3 --interval 0sec
+assert error {|| wait-for-packages [$base_item] 'latest' $delayed --attempts 2 --interval 0sec }
+assert error {|| wait-for-packages [$base_item] 'latest' {|_entry, _attempt| $existing_base | update dist.integrity 'incorrect' } --attempts 3 --interval 0sec }
+assert error {|| wait-for-packages [$base_item] 'latest' $delayed --attempts 0 --interval 0sec }
 
 let cjs_source_names = (cjs-source-paths | each {|source| $source | path basename })
 assert ('index.cjs' in $cjs_source_names)
