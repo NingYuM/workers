@@ -329,20 +329,35 @@ jobs:
           } else {
             $env.PATH = ($env.PATH | prepend $pdfium_lib_dir)
           }
-          # Bound the largest native test build on Linux ARM runners.
-          let native_test_limits = if $nu.os-info.name == 'linux' and $env.RUNNER_ARCH? == 'ARM64' {
+          # Bound native test compilation on smaller runners.
+          let native_test_flags = if $nu.os-info.name == 'linux' and $env.RUNNER_ARCH? == 'ARM64' {
             ['--jobs', '2', '--no-parallelize']
+          } else if $nu.os-info.name == 'macos' {
+            # Omit debug symbols and leave memory for the OS on the 7 GB runner.
+            ['--strip', '--jobs', '2']
           } else {
             []
           }
           # Also own the former Agent write suite's empty-config guarantee.
-          let xdoc_test_config = (mktemp --directory)
+          let xdoc_test_dir = (mktemp --directory)
           try {
-            with-env {XDOC_CONFIG_PATH: $xdoc_test_config} {
-              moon -C s8fy test cmd/main cmd/server src/build_info src/local_auth src/convert src/core src/deliver src/pdf_text src/server src/support src/visual_oracle test_cases --target native ...$native_test_limits
+            let xdoc_test_config = ($xdoc_test_dir | path join 'config')
+            mkdir $xdoc_test_config
+            let test_env = if $nu.os-info.name == 'macos' {
+              # Clang spends most of this suite's time optimizing generated C.
+              # Moon wraps compile invocations only. The last -O flag wins.
+              let cc_wrapper = ($xdoc_test_dir | path join 'cc-no-opt')
+              "#!/bin/sh\nexec \"$@\" -O0\n" | save $cc_wrapper
+              ^chmod +x $cc_wrapper
+              {XDOC_CONFIG_PATH: $xdoc_test_config, MOON_CC_WRAPPER: $cc_wrapper}
+            } else {
+              {XDOC_CONFIG_PATH: $xdoc_test_config}
+            }
+            with-env $test_env {
+              moon -C s8fy test cmd/main cmd/server src/build_info src/local_auth src/convert src/core src/deliver src/pdf_text src/server src/support src/visual_oracle test_cases --target native ...$native_test_flags
             }
           } finally {
-            rm --recursive $xdoc_test_config
+            rm --recursive $xdoc_test_dir
           }
           moon -C emf-mbt test . src/binary src/dib src/objects src/parser src/svg src/transform test --target all
           moon -C moon-tex test . src/font_runtime src/glyph test --target all
