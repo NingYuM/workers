@@ -6,3 +6,8 @@ Required Notice: Copyright (c) 2025-PRESENT hustcer
 This module is source-available, not open source. No commercial use is granted
 to third parties under this module's default license unless separately
 licensed.
+
+The legacy HTML decoder and serializer include code adapted from
+`bobzhang/html_parser` under the Apache License 2.0. See
+`s8fy/3rd-party/html-parser` in the source repository for the upstream
+licenses and provenance.

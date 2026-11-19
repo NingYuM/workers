@@ -311,7 +311,8 @@ The public packages use the
 [PolyForm Noncommercial License 1.0.0](https://github.com/hustcer/workers/blob/main/xdoc-npm/LICENSE)
 unless separately licensed. Runtime access and legal usage rights are separate;
 commercial use requires the applicable separate terms. Platform packages also
-retain the bundled PDFium third-party license notices.
+retain the bundled PDFium license files and the upstream `THIRD-PARTY-NOTICES`
+file when present.
 
 ## Support and package maintenance
 

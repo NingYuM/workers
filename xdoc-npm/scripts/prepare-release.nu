@@ -40,6 +40,8 @@ def platform-package [project: record, release: record, platform: record, extrac
   if (open --raw ($extract_dir | path join 'LICENSE')) != (open --raw ($PROJECT_DIR | path join 'LICENSE')) {
     fail $'The upstream LICENSE in ($platform.assetName) does not match the reviewed wrapper license.'
   }
+  let notices_path = ($extract_dir | path join 'THIRD-PARTY-NOTICES')
+  let notice_files = if ($notices_path | path exists) { ['THIRD-PARTY-NOTICES'] } else { [] }
   let binary_sha256 = (file-sha256 $binary_path)
   let binary_size = (file-size $binary_path)
   let package_manifest = {
@@ -57,7 +59,7 @@ def platform-package [project: record, release: record, platform: record, extrac
     }
     os: [$platform.os]
     cpu: [$platform.cpu]
-    files: ['bin', 'licenses-pdfium', 'provenance.json']
+    files: ['bin', 'licenses-pdfium', 'provenance.json', ...$notice_files]
     engines: {node: '>=22.0.0'}
     preferUnplugged: true
     publishConfig: {
@@ -95,6 +97,9 @@ def platform-package [project: record, release: record, platform: record, extrac
   }
 
   copy-release-files $extract_dir $package_dir $platform
+  for name in $notice_files {
+    cp ($extract_dir | path join $name) ($package_dir | path join $name)
+  }
   save-json ($package_dir | path join 'package.json') $package_manifest
   save-json ($package_dir | path join 'provenance.json') $provenance
 
@@ -103,6 +108,7 @@ def platform-package [project: record, release: record, platform: record, extrac
     'LICENSE'
     $'bin/($platform.binaryName)'
     'provenance.json'
+    ...$notice_files
   ])
   if not ($report.files | get path | any {|path| $path | str starts-with 'licenses-pdfium/' }) {
     fail $'Package ($platform.packageName) does not contain PDFium license notices.'

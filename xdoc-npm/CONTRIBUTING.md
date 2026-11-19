@@ -35,8 +35,10 @@ directory.
    git diff -- package.json release-lock.json
    ```
 
-   Review every asset name, byte size, and SHA-256 change. Also review the
-   native deployment targets when the upstream build configuration changes.
+   Review every asset name, byte size, and SHA-256 change. When the upstream
+   CLI archive's `LICENSE` changes, review the diff and sync the wrapper's
+   `LICENSE` to the reviewed text. Also review the native deployment targets
+   when the upstream build configuration changes.
    For macOS, confirm the upstream release verification evidence records
    `minimumOsVersion: 13.0` before lowering the values in `platforms.json`.
    The update script never commits, tags, pushes, or stages unrelated files.
