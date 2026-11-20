@@ -360,7 +360,7 @@ jobs:
             rm --recursive $xdoc_test_dir
           }
           moon -C emf-mbt test . src/binary src/dib src/objects src/parser src/svg src/transform test --target all
-          moon -C moon-tex test . src/font_runtime src/glyph test --target all
+          moon -C moon-tex test . src/font_runtime src/glyph src/vector test --target all
           moon -C pptx-gen test . src/ooxml src/opc src/spike src/xml test cmd/pptx-gen --target all
           moon -C parser-mbt test . benchmarks cmd/main src/ooxml src/shape_path src/svg src/types src/utils src/zip test transitions --target all
           moon -C license-policy test . test cmd/main --target native,js,wasm-gc
