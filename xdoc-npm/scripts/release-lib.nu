@@ -6,8 +6,8 @@ export const RELEASE_LOCK_PATH = path self ../release-lock.json
 export const PACKAGE_PATH = path self ../package.json
 export const SOURCE_REPOSITORY = 'hustcer/pptx'
 export const PACKAGE_REPOSITORY = 'hustcer/workers'
-export const PACKAGE_HOMEPAGE = 'https://structurify.io/en/products/pptx-runtime'
-export const PACKAGE_BUGS_URL = 'https://github.com/hustcer/xdoc-feedback/issues'
+export const PACKAGE_HOMEPAGE = 'https://structurify.io/en/products/pptx-runtime/'
+export const PACKAGE_BUGS_URL = 'https://github.com/hustcer/pptx-nova/issues'
 export const PACKAGE_GIT_URL = 'git+https://github.com/hustcer/workers.git'
 export const NPM_REGISTRY = 'https://registry.npmjs.org'
 

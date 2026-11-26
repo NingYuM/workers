@@ -1,5 +1,7 @@
 # xdoc
 
+[Product](https://structurify.io/en/products/pptx-runtime/) · [Documentation](https://docs.structurify.io/en/pptx-runtime/) · [Quickstart](https://docs.structurify.io/en/pptx-runtime/getting-started/) · [Licensing](#free-mode-and-licensing) · [Report an issue](https://github.com/hustcer/pptx-nova/issues)
+
 **Create editable PowerPoint decks. Automate document workflows. Give your AI agent a document runtime.**
 
 `@s8fy/xdoc` brings the native **xdoc CLI** to npm. Create and edit `.pptx`
@@ -317,7 +319,7 @@ file when present.
 ## Support and package maintenance
 
 Report installation, platform selection, and launcher issues in the
-[`hustcer/xdoc-feedback` issue tracker](https://github.com/hustcer/xdoc-feedback/issues).
+[`hustcer/pptx-nova` issue tracker](https://github.com/hustcer/pptx-nova/issues).
 For native runtime behavior, use the upstream support channel supplied with
 your xdoc distribution or license.
 

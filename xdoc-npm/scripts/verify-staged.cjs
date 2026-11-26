@@ -83,9 +83,7 @@ function main() {
   const plan = JSON.parse(fs.readFileSync(path.join(stagingDirectory, 'release-plan.json'), 'utf8'))
   const base = plan.packages.find((entry) => entry.kind === 'base')
   if (base?.version !== expectedVersion) {
-    fail(
-      `Release plan version mismatch: expected ${expectedVersion}, received ${base?.version}.`,
-    )
+    fail(`Release plan version mismatch: expected ${expectedVersion}, received ${base?.version}.`)
   }
   const native = plan.packages.find((entry) => entry.id === platform.id)
   if (!base || !native || native.name !== platform.packageName) {

@@ -43,9 +43,9 @@
     "slides",
     "xdoc"
   ],
-  "homepage": "https://structurify.io/en/products/pptx-runtime",
+  "homepage": "https://structurify.io/en/products/pptx-runtime/",
   "bugs": {
-    "url": "https://github.com/hustcer/xdoc-feedback/issues"
+    "url": "https://github.com/hustcer/pptx-nova/issues"
   },
   "license": "PolyForm-Noncommercial-1.0.0",
   "author": "hustcer",

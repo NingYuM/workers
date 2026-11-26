@@ -127,8 +127,8 @@ test('keeps the public package manifest aligned with the platform manifest', () 
   )
 
   assert.equal(packageJson.name, '@s8fy/xdoc')
-  assert.equal(packageJson.homepage, 'https://structurify.io/en/products/pptx-runtime')
-  assert.deepEqual(packageJson.bugs, { url: 'https://github.com/hustcer/xdoc-feedback/issues' })
+  assert.equal(packageJson.homepage, 'https://structurify.io/en/products/pptx-runtime/')
+  assert.deepEqual(packageJson.bugs, { url: 'https://github.com/hustcer/pptx-nova/issues' })
   assert.deepEqual(packageJson.repository, {
     type: 'git',
     url: 'git+https://github.com/hustcer/workers.git',
